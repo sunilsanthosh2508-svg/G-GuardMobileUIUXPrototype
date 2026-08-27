@@ -1,0 +1,10 @@
+{
+  "description": "Monitor and optimize gaming performance with real-time thermal analytics, predictive alerts, and AI-driven diagnostics for a seamless gaming experience.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
