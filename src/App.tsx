@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+```tsx
+import React, { useEffect, useState } from "react";
 
 /* =========================================================
    VMAX — AI-POWERED GAMING PERFORMANCE
    Frontend-only prototype
-   8 Screens + Working Controls + Gemini-powered reasoning
+   8 Screens + Working Controls + Groq-powered reasoning
 ========================================================= */
 
 type Screen =
@@ -62,28 +63,28 @@ const F = {
 };
 
 /* =========================================================
-   GEMINI SDK — AI REASONING FEATURE
-   -----------------------------------------------------------
-   Uses the official @google/genai SDK instead of a raw REST
-   fetch() call. Install it first:
+   GROQ AI REASONING
+   ---------------------------------------------------------
+   Frontend-only prototype.
 
-     npm install @google/genai
+   IMPORTANT:
+   Never commit a real Groq API key to GitHub.
 
-   IMPORTANT: Paste your OWN Gemini credential below before
-   running. This project uses an "AQ" style auth key (not the
-   older "AIza..." API key format) — the SDK accepts it the
-   same way, via the `apiKey` field.
+   Replace the placeholder below with your own NEW Groq key
+   for local/hackathon prototype testing.
 
-   Never commit a real credential to a public repo. For a
-   hackathon demo, paste it locally right before presenting
-   and remove it again afterward (or use an env variable / a
-   small proxy server in a real deployment, since any key
-   embedded in frontend code is visible to anyone who inspects
-   the bundle or network traffic).
+   For a production deployment, use a backend/serverless
+   function so the API key is not exposed in the browser.
 ========================================================= */
 
 const GROQ_API_KEY = "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";
 
+function isGroqKeyConfigured(): boolean {
+  return (
+    GROQ_API_KEY.trim().length > 0 &&
+    GROQ_API_KEY !== "PASTE_MY_GROQ_GSK_KEY_HERE"
+  );
+}
 
 async function getAIReasoning({
   fps,
@@ -95,6 +96,10 @@ async function getAIReasoning({
   action: string;
 }): Promise<string> {
   try {
+    if (!isGroqKeyConfigured()) {
+      return "Maintain stable FPS while keeping device temperature within the optimal range.";
+    }
+
     const response = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
@@ -109,7 +114,7 @@ async function getAIReasoning({
             {
               role: "system",
               content:
-                "You are VMAX AI Gaming Optimizer. Give one short optimization recommendation.",
+                "You are VMAX AI Gaming Optimizer. Give one short gaming optimization recommendation based on FPS and device temperature.",
             },
             {
               role: "user",
@@ -117,7 +122,7 @@ async function getAIReasoning({
 Temperature: ${temperature}°C
 Action: ${action}
 
-Give one short optimization sentence only.`,
+Give only one short gaming optimization recommendation sentence.`,
             },
           ],
           temperature: 0.7,
@@ -127,21 +132,29 @@ Give one short optimization sentence only.`,
     );
 
     if (!response.ok) {
-      throw new Error(await response.text());
+      const errorText = await response.text();
+
+      throw new Error(
+        `Groq API error ${response.status}: ${errorText}`
+      );
     }
 
     const data = await response.json();
 
+    const aiResponse =
+      data.choices?.[0]?.message?.content?.trim();
+
     return (
-      data.choices?.[0]?.message?.content ||
-      "Optimization completed successfully."
+      aiResponse ||
+      "Maintain stable FPS while keeping device temperature within the optimal range."
     );
   } catch (error) {
-    console.error("Groq Error:", error);
+    console.error("Groq AI Error:", error);
 
-    return "AI optimization completed successfully while maintaining stable FPS and thermal efficiency.";
+    return "Optimization completed while maintaining stable FPS and thermal efficiency.";
   }
 }
+
 /* =========================================================
    GLOBAL CSS
 ========================================================= */
@@ -266,6 +279,7 @@ function downloadText(filename: string, text: string) {
 
   a.href = url;
   a.download = filename;
+
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -277,7 +291,9 @@ function downloadCSV(filename: string, rows: string[][]) {
   const csv = rows
     .map((row) =>
       row
-        .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
+        .map((cell) =>
+          `"${String(cell).replace(/"/g, '""')}"`
+        )
         .join(",")
     )
     .join("\n");
@@ -389,7 +405,10 @@ function Bar({
     >
       <div
         style={{
-          width: `${Math.max(0, Math.min(100, value))}%`,
+          width: `${Math.max(
+            0,
+            Math.min(100, value)
+          )}%`,
           height: "100%",
           borderRadius: height,
           background: color,
@@ -440,7 +459,9 @@ function Toggle({
             ? "translateX(22px)"
             : "translateX(0)",
           transition: "transform .2s ease",
-          boxShadow: on ? `0 0 10px ${color}` : "none",
+          boxShadow: on
+            ? `0 0 10px ${color}`
+            : "none",
         }}
       />
     </button>
@@ -538,7 +559,9 @@ function ActionButton({
           ? "rgba(255,255,255,.03)"
           : `${color}12`,
         border: `1px solid ${
-          disabled ? "rgba(255,255,255,.08)" : `${color}44`
+          disabled
+            ? "rgba(255,255,255,.08)"
+            : `${color}44`
         }`,
         color: disabled ? "#555d68" : C.white,
         fontFamily: F.display,
@@ -560,7 +583,9 @@ function ThinkingBanner() {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setDots((prev) => (prev.length >= 3 ? "." : prev + "."));
+      setDots((prev) =>
+        prev.length >= 3 ? "." : prev + "."
+      );
     }, 350);
 
     return () => window.clearInterval(timer);
@@ -773,8 +798,19 @@ function ScreenDash({
           borderColor: `${C.cyan}25`,
         }}
       >
-        <Glow color={C.cyan} size={180} top={-80} right={-40} />
-        <Glow color={C.purple} size={140} top={40} right={80} />
+        <Glow
+          color={C.cyan}
+          size={180}
+          top={-80}
+          right={-40}
+        />
+
+        <Glow
+          color={C.purple}
+          size={140}
+          top={40}
+          right={80}
+        />
 
         <div style={{ position: "relative" }}>
           <div
@@ -909,9 +945,15 @@ function ScreenDash({
               letterSpacing: ".08em",
             }}
           >
-            <div style={{ fontSize: 17, marginBottom: 7 }}>
+            <div
+              style={{
+                fontSize: 17,
+                marginBottom: 7,
+              }}
+            >
               {icon}
             </div>
+
             {label}
           </button>
         ))}
@@ -952,7 +994,9 @@ function ScreenSetup({
 }: {
   go: (screen: Screen) => void;
   settings: Settings;
-  setSettings: React.Dispatch<React.SetStateAction<Settings>>;
+  setSettings: React.Dispatch<
+    React.SetStateAction<Settings>
+  >;
   launch: () => void;
 }) {
   const config = [
@@ -1007,7 +1051,12 @@ function ScreenSetup({
           minHeight: 160,
         }}
       >
-        <Glow color={C.purple} size={170} top={-70} right={-30} />
+        <Glow
+          color={C.purple}
+          size={170}
+          top={-70}
+          right={-30}
+        />
 
         <div
           style={{
@@ -1025,8 +1074,10 @@ function ScreenSetup({
             }}
           >
             <Tag label="120Hz" color={C.cyan} />
-
-            <Tag label="COMPETITIVE" color={C.purple} />
+            <Tag
+              label="COMPETITIVE"
+              color={C.purple}
+            />
           </div>
 
           <div>
@@ -1244,7 +1295,9 @@ function ScreenMonitor({
         title="LIVE MONITOR"
         go={go}
         tag={sessionActive ? "LIVE" : "READY"}
-        tagColor={sessionActive ? C.green : C.yellow}
+        tagColor={
+          sessionActive ? C.green : C.yellow
+        }
       />
 
       <Card
@@ -1309,8 +1362,12 @@ function ScreenMonitor({
             </div>
 
             <Tag
-              label={fps >= 90 ? "STABLE" : "FPS RISK"}
-              color={fps >= 90 ? C.green : C.red}
+              label={
+                fps >= 90 ? "STABLE" : "FPS RISK"
+              }
+              color={
+                fps >= 90 ? C.green : C.red
+              }
             />
           </div>
         </div>
@@ -1338,7 +1395,9 @@ function ScreenMonitor({
                 background: "rgba(255,255,255,.03)",
               }}
             >
-              <div style={{ fontSize: 17 }}>{icon}</div>
+              <div style={{ fontSize: 17 }}>
+                {icon}
+              </div>
 
               <div
                 style={{
@@ -1406,8 +1465,8 @@ function ScreenMonitor({
             color: C.mute,
           }}
         >
-          AI prediction: temperature expected to remain within
-          optimal range.
+          AI prediction: temperature expected to remain
+          within optimal range.
         </div>
       </Card>
 
@@ -1424,8 +1483,14 @@ function ScreenMonitor({
         </div>
 
         {[
-          ["AI Thermal Prediction", settings.thermalPrediction],
-          ["Auto-Optimization", settings.autoOptimization],
+          [
+            "AI Thermal Prediction",
+            settings.thermalPrediction,
+          ],
+          [
+            "Auto-Optimization",
+            settings.autoOptimization,
+          ],
           ["FPS Guard", settings.fpsGuard],
         ].map(([label, enabled]) => (
           <div
@@ -1450,7 +1515,9 @@ function ScreenMonitor({
 
             <Tag
               label={enabled ? "ACTIVE" : "OFF"}
-              color={enabled ? C.green : C.mute}
+              color={
+                enabled ? C.green : C.mute
+              }
             />
           </div>
         ))}
@@ -1460,7 +1527,9 @@ function ScreenMonitor({
         color={C.green}
         onClick={startSession}
       >
-        {sessionActive ? "● SESSION RUNNING" : "▶ START MONITORING"}
+        {sessionActive
+          ? "● SESSION RUNNING"
+          : "▶ START MONITORING"}
       </ActionButton>
     </div>
   );
@@ -1478,26 +1547,31 @@ function ScreenAlert({
 }: {
   go: (screen: Screen) => void;
   alerts: AlertSettings;
-  setAlerts: React.Dispatch<React.SetStateAction<AlertSettings>>;
+  setAlerts: React.Dispatch<
+    React.SetStateAction<AlertSettings>
+  >;
   notify: (message: string) => void;
 }) {
   const items = [
     {
       key: "thermal" as const,
       label: "Thermal Alerts",
-      description: "Notify when thermal risk increases",
+      description:
+        "Notify when thermal risk increases",
       color: C.red,
     },
     {
       key: "fps" as const,
       label: "FPS Alerts",
-      description: "Notify when FPS falls below threshold",
+      description:
+        "Notify when FPS falls below threshold",
       color: C.yellow,
     },
     {
       key: "optimization" as const,
       label: "Optimization Alerts",
-      description: "Notify when VMAX applies optimization",
+      description:
+        "Notify when VMAX applies optimization",
       color: C.cyan,
     },
   ];
@@ -1617,7 +1691,9 @@ function ScreenAlert({
                     marginTop: 3,
                     fontFamily: F.mono,
                     fontSize: 8,
-                    color: enabled ? C.mute : "#454c56",
+                    color: enabled
+                      ? C.mute
+                      : "#454c56",
                   }}
                 >
                   {enabled
@@ -1637,7 +1713,9 @@ function ScreenAlert({
 
                   notify(
                     `${item.label} ${
-                      enabled ? "disabled" : "enabled"
+                      enabled
+                        ? "disabled"
+                        : "enabled"
                     }`
                   );
                 }}
@@ -1679,7 +1757,9 @@ function ScreenAlert({
             style={{
               fontFamily: F.display,
               fontSize: 14,
-              color: active ? C.green : C.mute,
+              color: active
+                ? C.green
+                : C.mute,
             }}
           >
             {active}/3
@@ -1692,7 +1772,7 @@ function ScreenAlert({
 
 /* =========================================================
    OPTIMIZE
-   (now with live Gemini-generated reasoning via @google/genai)
+   Groq-powered live reasoning
 ========================================================= */
 
 function ScreenOptimize({
@@ -1714,32 +1794,36 @@ function ScreenOptimize({
 }) {
   const [thinking, setThinking] = useState(false);
 
-const applyOptimization = async () => {
-  setThinking(true);
+  const applyOptimization = async () => {
+    setThinking(true);
 
-  try {
-    const reasoning = await getAIReasoning({
-      fps,
-      temperature,
-      action: "Adaptive optimization applied",
-    });
+    try {
+      const reasoning = await getAIReasoning({
+        fps,
+        temperature,
+        action: "Adaptive optimization applied",
+      });
 
-    setOptimization((prev) => ({
-      ...prev,
-      optimized: true,
-      boost: false,
-      lastAction: reasoning,
-      history: [reasoning, ...prev.history].slice(0, 10),
-    }));
+      setOptimization((prev) => ({
+        ...prev,
+        optimized: true,
+        boost: false,
+        lastAction: reasoning,
+        history: [
+          reasoning,
+          ...prev.history,
+        ].slice(0, 10),
+      }));
 
-    notify("Optimization applied successfully");
-  } finally {
-    setThinking(false);
-  }
-};
+      notify("Optimization applied successfully");
+    } finally {
+      setThinking(false);
+    }
+  };
 
   const boostNow = async () => {
-    const baseAction = "Performance boost activated";
+    const baseAction =
+      "Performance boost activated";
 
     setThinking(true);
 
@@ -1760,7 +1844,10 @@ const applyOptimization = async () => {
       setOptimization((prev) => ({
         ...prev,
         lastAction: reasoning,
-        history: [reasoning, ...prev.history].slice(0, 10),
+        history: [
+          reasoning,
+          ...prev.history,
+        ].slice(0, 10),
       }));
 
       notify("Performance Boost activated");
@@ -1770,13 +1857,17 @@ const applyOptimization = async () => {
   };
 
   const resetProfile = () => {
-    const baseAction = "Profile reset to default";
+    const baseAction =
+      "Profile reset to default";
 
     setOptimization({
       optimized: false,
       boost: false,
       lastAction: baseAction,
-      history: [baseAction, ...optimization.history].slice(0, 10),
+      history: [
+        baseAction,
+        ...optimization.history,
+      ].slice(0, 10),
     });
 
     notify("Performance profile reset");
@@ -1789,18 +1880,27 @@ const applyOptimization = async () => {
       `Generated: ${new Date().toLocaleString()}`,
       "",
       `Current state: ${
-        optimization.optimized ? "OPTIMIZED" : "DEFAULT"
+        optimization.optimized
+          ? "OPTIMIZED"
+          : "DEFAULT"
       }`,
-      `Boost: ${optimization.boost ? "ON" : "OFF"}`,
+      `Boost: ${
+        optimization.boost ? "ON" : "OFF"
+      }`,
       `Last action: ${optimization.lastAction}`,
       "",
       "History:",
       ...optimization.history.map(
-        (item, index) => `${index + 1}. ${item}`
+        (item, index) =>
+          `${index + 1}. ${item}`
       ),
     ].join("\n");
 
-    downloadText("vmax-optimization-log.txt", text);
+    downloadText(
+      "vmax-optimization-log.txt",
+      text
+    );
+
     notify("Optimization log exported");
   };
 
@@ -1816,8 +1916,16 @@ const applyOptimization = async () => {
       <Header
         title="OPTIMIZE"
         go={go}
-        tag={optimization.optimized ? "OPTIMIZED" : "READY"}
-        tagColor={optimization.optimized ? C.green : C.yellow}
+        tag={
+          optimization.optimized
+            ? "OPTIMIZED"
+            : "READY"
+        }
+        tagColor={
+          optimization.optimized
+            ? C.green
+            : C.yellow
+        }
       />
 
       {thinking && <ThinkingBanner />}
@@ -1867,7 +1975,11 @@ const applyOptimization = async () => {
           </div>
 
           <div
-            className={optimization.boost ? "anim-glow" : ""}
+            className={
+              optimization.boost
+                ? "anim-glow"
+                : ""
+            }
             style={{
               width: 52,
               height: 52,
@@ -1880,7 +1992,9 @@ const applyOptimization = async () => {
             }}
           >
             {thinking ? (
-              <span className="anim-thinking">🤖</span>
+              <span className="anim-thinking">
+                🤖
+              </span>
             ) : (
               "⚡"
             )}
@@ -1892,7 +2006,9 @@ const applyOptimization = async () => {
             marginTop: 12,
             fontFamily: F.body,
             fontSize: 9,
-            color: thinking ? C.cyan : C.mute,
+            color: thinking
+              ? C.cyan
+              : C.mute,
           }}
         >
           {optimization.lastAction}
@@ -1903,12 +2019,14 @@ const applyOptimization = async () => {
             marginTop: 8,
             fontFamily: F.mono,
             fontSize: 7,
-            color: isGeminiKeyConfigured() ? C.green : "#5a6270",
+            color: isGroqKeyConfigured()
+              ? C.green
+              : "#5a6270",
           }}
         >
-          {isGeminiKeyConfigured()
-            ? "✓ Gemini credential detected — live reasoning enabled"
-            : "⚠ Add your Gemini AQ auth key to enable live AI reasoning"}
+          {isGroqKeyConfigured()
+            ? "✓ Groq AI Connected — Live optimization enabled"
+            : "⚠ Add your Groq GSK key to enable live AI optimization"}
         </div>
       </Card>
 
@@ -2019,7 +2137,9 @@ const applyOptimization = async () => {
             onClick={applyOptimization}
             disabled={thinking}
           >
-            {thinking ? "🤖 THINKING..." : "✓ APPLY OPTIMIZATION"}
+            {thinking
+              ? "🤖 THINKING..."
+              : "✓ APPLY OPTIMIZATION"}
           </ActionButton>
         </div>
       </Card>
@@ -2041,7 +2161,8 @@ const applyOptimization = async () => {
             style={{
               padding: 12,
               borderRadius: 10,
-              background: "rgba(255,255,255,.03)",
+              background:
+                "rgba(255,255,255,.03)",
               fontFamily: F.mono,
               fontSize: 8,
               color: C.mute,
@@ -2051,24 +2172,31 @@ const applyOptimization = async () => {
             No actions recorded yet.
           </div>
         ) : (
-          optimization.history.map((item, index) => (
-            <div
-              key={`${item}-${index}`}
-              style={{
-                padding: "8px 0",
-                borderBottom:
-                  "1px solid rgba(255,255,255,.05)",
-                fontFamily: F.body,
-                fontSize: 9,
-                color: C.white,
-              }}
-            >
-              <span style={{ color: C.mute }}>
-                {index + 1}.{" "}
-              </span>
-              {item}
-            </div>
-          ))
+          optimization.history.map(
+            (item, index) => (
+              <div
+                key={`${item}-${index}`}
+                style={{
+                  padding: "8px 0",
+                  borderBottom:
+                    "1px solid rgba(255,255,255,.05)",
+                  fontFamily: F.body,
+                  fontSize: 9,
+                  color: C.white,
+                }}
+              >
+                <span
+                  style={{
+                    color: C.mute,
+                  }}
+                >
+                  {index + 1}.{" "}
+                </span>
+
+                {item}
+              </div>
+            )
+          )
         )}
       </Card>
     </div>
@@ -2094,18 +2222,32 @@ function ScreenAnalytics({
   ];
 
   const exportReport = () => {
-    downloadCSV("vmax-performance-report.csv", [
-      ["VMAX PERFORMANCE REPORT", ""],
-      ["Generated", new Date().toLocaleString()],
-      [],
-      ["Metric", "Value", "Change"],
-      ["Average FPS", "116", "+4.8%"],
-      ["Average Temperature", "43°C", "-6.2%"],
-      ["Stable FPS", "94%", "+8.1%"],
-      ["Thermal Events", "8", "-15%"],
-      ["NPU Accuracy", "94%", "Stable"],
-      ["Optimization Events", "12", "+12%"],
-    ]);
+    downloadCSV(
+      "vmax-performance-report.csv",
+      [
+        ["VMAX PERFORMANCE REPORT", ""],
+        [
+          "Generated",
+          new Date().toLocaleString(),
+        ],
+        [],
+        ["Metric", "Value", "Change"],
+        ["Average FPS", "116", "+4.8%"],
+        [
+          "Average Temperature",
+          "43°C",
+          "-6.2%",
+        ],
+        ["Stable FPS", "94%", "+8.1%"],
+        ["Thermal Events", "8", "-15%"],
+        ["NPU Accuracy", "94%", "Stable"],
+        [
+          "Optimization Events",
+          "12",
+          "+12%",
+        ],
+      ]
+    );
 
     notify("Analytics report exported");
   };
@@ -2145,52 +2287,52 @@ function ScreenAnalytics({
             gap: 9,
           }}
         >
-          {stats.map(([label, value, change, color]) => (
-            <div
-              key={label}
-              style={{
-                padding: 12,
-                borderRadius: 11,
-                background: "rgba(255,255,255,.03)",
-              }}
-            >
+          {stats.map(
+            ([label, value, change, color]) => (
               <div
+                key={label}
                 style={{
-                  fontFamily: F.mono,
-                  fontSize: 7,
-                  color: C.mute,
+                  padding: 12,
+                  borderRadius: 11,
+                  background:
+                    "rgba(255,255,255,.03)",
                 }}
               >
-                {label}
-              </div>
+                <div
+                  style={{
+                    fontFamily: F.mono,
+                    fontSize: 7,
+                    color: C.mute,
+                  }}
+                >
+                  {label}
+                </div>
 
-              <div
-                style={{
-                  marginTop: 5,
-                  fontFamily: F.display,
-                  fontSize: 19,
-                  fontWeight: 800,
-                  color,
-                }}
-              >
-                {value}
-              </div>
+                <div
+                  style={{
+                    marginTop: 5,
+                    fontFamily: F.display,
+                    fontSize: 19,
+                    fontWeight: 800,
+                    color,
+                  }}
+                >
+                  {value}
+                </div>
 
-              <div
-                style={{
-                  marginTop: 3,
-                  fontFamily: F.mono,
-                  fontSize: 7,
-                  color:
-                    String(change).startsWith("-")
-                      ? C.green
-                      : C.green,
-                }}
-              >
-                {change}
+                <div
+                  style={{
+                    marginTop: 3,
+                    fontFamily: F.mono,
+                    fontSize: 7,
+                    color: C.green,
+                  }}
+                >
+                  {change}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          )}
         </div>
       </Card>
 
@@ -2210,39 +2352,49 @@ function ScreenAnalytics({
           ["110–120 FPS", 68, C.green],
           ["90–109 FPS", 24, C.yellow],
           ["BELOW 90 FPS", 8, C.red],
-        ].map(([label, value, color]) => (
-          <div key={label} style={{ marginBottom: 11 }}>
+        ].map(
+          ([label, value, color]) => (
             <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: 4,
-              }}
+              key={label}
+              style={{ marginBottom: 11 }}
             >
-              <span
+              <div
                 style={{
-                  fontFamily: F.body,
-                  fontSize: 9,
-                  color: C.white,
+                  display: "flex",
+                  justifyContent:
+                    "space-between",
+                  marginBottom: 4,
                 }}
               >
-                {label}
-              </span>
+                <span
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 9,
+                    color: C.white,
+                  }}
+                >
+                  {label}
+                </span>
 
-              <span
-                style={{
-                  fontFamily: F.mono,
-                  fontSize: 8,
-                  color,
-                }}
-              >
-                {value}%
-              </span>
+                <span
+                  style={{
+                    fontFamily: F.mono,
+                    fontSize: 8,
+                    color,
+                  }}
+                >
+                  {value}%
+                </span>
+              </div>
+
+              <Bar
+                value={Number(value)}
+                color={String(color)}
+                height={5}
+              />
             </div>
-
-            <Bar value={Number(value)} color={String(color)} height={5} />
-          </div>
-        ))}
+          )
+        )}
       </Card>
 
       <Card style={{ padding: 15, marginBottom: 10 }}>
@@ -2330,19 +2482,22 @@ function ScreenAI({
     {
       key: "inference" as const,
       label: "Enable NPU Inference",
-      description: "Run supported AI workloads on NPU",
+      description:
+        "Run supported AI workloads on NPU",
       color: C.purple,
     },
     {
       key: "background" as const,
       label: "Background Processing",
-      description: "Allow AI processing during background activity",
+      description:
+        "Allow AI processing during background activity",
       color: C.cyan,
     },
     {
       key: "powerSaving" as const,
       label: "Power Saving Mode",
-      description: "Prioritize efficiency during AI processing",
+      description:
+        "Prioritize efficiency during AI processing",
       color: C.green,
     },
   ];
@@ -2359,9 +2514,15 @@ function ScreenAI({
       <Header
         title="AI ENGINE"
         go={go}
-        tag={npuSettings.inference ? "NPU ACTIVE" : "NPU OFF"}
+        tag={
+          npuSettings.inference
+            ? "NPU ACTIVE"
+            : "NPU OFF"
+        }
         tagColor={
-          npuSettings.inference ? C.purple : C.mute
+          npuSettings.inference
+            ? C.purple
+            : C.mute
         }
       />
 
@@ -2386,12 +2547,14 @@ function ScreenAI({
               width: 10,
               height: 10,
               borderRadius: "50%",
-              background: npuSettings.inference
-                ? C.purple
-                : C.mute,
-              boxShadow: npuSettings.inference
-                ? `0 0 12px ${C.purple}`
-                : "none",
+              background:
+                npuSettings.inference
+                  ? C.purple
+                  : C.mute,
+              boxShadow:
+                npuSettings.inference
+                  ? `0 0 12px ${C.purple}`
+                  : "none",
             }}
           />
 
@@ -2400,9 +2563,10 @@ function ScreenAI({
               fontFamily: F.display,
               fontSize: 15,
               fontWeight: 800,
-              color: npuSettings.inference
-                ? C.purple
-                : C.mute,
+              color:
+                npuSettings.inference
+                  ? C.purple
+                  : C.mute,
             }}
           >
             SNAPDRAGON NPU
@@ -2484,34 +2648,37 @@ function ScreenAI({
           ["Thermal Prediction", "94%", C.cyan],
           ["FPS Forecasting", "91%", C.green],
           ["Auto-Optimization", "89%", C.yellow],
-        ].map(([name, accuracy, color]) => (
-          <div
-            key={name}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "10px 0",
-              borderBottom:
-                "1px solid rgba(255,255,255,.05)",
-            }}
-          >
-            <span
+        ].map(
+          ([name, accuracy, color]) => (
+            <div
+              key={name}
               style={{
-                fontFamily: F.body,
-                fontSize: 10,
-                color: C.white,
+                display: "flex",
+                justifyContent:
+                  "space-between",
+                alignItems: "center",
+                padding: "10px 0",
+                borderBottom:
+                  "1px solid rgba(255,255,255,.05)",
               }}
             >
-              {name}
-            </span>
+              <span
+                style={{
+                  fontFamily: F.body,
+                  fontSize: 10,
+                  color: C.white,
+                }}
+              >
+                {name}
+              </span>
 
-            <Tag
-              label={`ACCURACY ${accuracy}`}
-              color={String(color)}
-            />
-          </div>
-        ))}
+              <Tag
+                label={`ACCURACY ${accuracy}`}
+                color={String(color)}
+              />
+            </div>
+          )
+        )}
       </Card>
 
       <Card style={{ padding: 15 }}>
@@ -2527,14 +2694,16 @@ function ScreenAI({
         </div>
 
         {settings.map((item) => {
-          const enabled = npuSettings[item.key];
+          const enabled =
+            npuSettings[item.key];
 
           return (
             <div
               key={item.key}
               style={{
                 display: "flex",
-                justifyContent: "space-between",
+                justifyContent:
+                  "space-between",
                 alignItems: "center",
                 gap: 12,
                 padding: "12px 0",
@@ -2559,7 +2728,9 @@ function ScreenAI({
                     marginTop: 3,
                     fontFamily: F.mono,
                     fontSize: 7,
-                    color: enabled ? C.mute : "#454c56",
+                    color: enabled
+                      ? C.mute
+                      : "#454c56",
                   }}
                 >
                   {enabled
@@ -2579,7 +2750,9 @@ function ScreenAI({
 
                   notify(
                     `${item.label} ${
-                      enabled ? "disabled" : "enabled"
+                      enabled
+                        ? "disabled"
+                        : "enabled"
                     }`
                   );
                 }}
@@ -2628,7 +2801,9 @@ function ScreenSummary({
           text: summaryText,
         });
       } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(summaryText);
+        await navigator.clipboard.writeText(
+          summaryText
+        );
       } else {
         downloadText(
           "vmax-session-summary.txt",
@@ -2733,39 +2908,42 @@ function ScreenSummary({
             gap: 9,
           }}
         >
-          {stats.map(([label, value, color]) => (
-            <div
-              key={label}
-              style={{
-                padding: 13,
-                borderRadius: 11,
-                background: "rgba(255,255,255,.03)",
-                textAlign: "center",
-              }}
-            >
+          {stats.map(
+            ([label, value, color]) => (
               <div
+                key={label}
                 style={{
-                  fontFamily: F.mono,
-                  fontSize: 7,
-                  color: C.mute,
+                  padding: 13,
+                  borderRadius: 11,
+                  background:
+                    "rgba(255,255,255,.03)",
+                  textAlign: "center",
                 }}
               >
-                {label}
-              </div>
+                <div
+                  style={{
+                    fontFamily: F.mono,
+                    fontSize: 7,
+                    color: C.mute,
+                  }}
+                >
+                  {label}
+                </div>
 
-              <div
-                style={{
-                  marginTop: 5,
-                  fontFamily: F.display,
-                  fontSize: 20,
-                  fontWeight: 800,
-                  color,
-                }}
-              >
-                {value}
+                <div
+                  style={{
+                    marginTop: 5,
+                    fontFamily: F.display,
+                    fontSize: 20,
+                    fontWeight: 800,
+                    color,
+                  }}
+                >
+                  {value}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          )}
         </div>
       </Card>
 
@@ -2782,10 +2960,22 @@ function ScreenSummary({
         </div>
 
         {[
-          ["🎯", "Maintained 90+ FPS for 94% of session"],
-          ["🌡️", "Thermal protection triggered 3 times"],
-          ["⚡", "Performance optimization improved stability"],
-          ["🤖", "NPU prediction confidence: 94%"],
+          [
+            "🎯",
+            "Maintained 90+ FPS for 94% of session",
+          ],
+          [
+            "🌡️",
+            "Thermal protection triggered 3 times",
+          ],
+          [
+            "⚡",
+            "Performance optimization improved stability",
+          ],
+          [
+            "🤖",
+            "NPU prediction confidence: 94%",
+          ],
         ].map(([icon, text]) => (
           <div
             key={text}
@@ -2798,7 +2988,9 @@ function ScreenSummary({
                 "1px solid rgba(255,255,255,.05)",
             }}
           >
-            <span style={{ fontSize: 15 }}>{icon}</span>
+            <span style={{ fontSize: 15 }}>
+              {icon}
+            </span>
 
             <span
               style={{
@@ -2846,17 +3038,19 @@ export default function App() {
   const [screen, setScreen] =
     useState<Screen>("dash");
 
-  const [settings, setSettings] = useState<Settings>({
-    thermalPrediction: true,
-    autoOptimization: true,
-    fpsGuard: true,
-  });
+  const [settings, setSettings] =
+    useState<Settings>({
+      thermalPrediction: true,
+      autoOptimization: true,
+      fpsGuard: true,
+    });
 
-  const [alerts, setAlerts] = useState<AlertSettings>({
-    thermal: true,
-    fps: true,
-    optimization: true,
-  });
+  const [alerts, setAlerts] =
+    useState<AlertSettings>({
+      thermal: true,
+      fps: true,
+      optimization: true,
+    });
 
   const [npuSettings, setNpuSettings] =
     useState<NpuSettings>({
@@ -2869,12 +3063,15 @@ export default function App() {
     useState<OptimizationState>({
       optimized: false,
       boost: false,
-      lastAction: "No optimization applied yet",
+      lastAction:
+        "No optimization applied yet",
       history: [],
     });
 
   const [fps, setFps] = useState(116);
-  const [temperature, setTemperature] = useState(41);
+  const [temperature, setTemperature] =
+    useState(41);
+
   const [sessionActive, setSessionActive] =
     useState(false);
 
@@ -2908,13 +3105,17 @@ export default function App() {
     setOptimization({
       optimized: false,
       boost: false,
-      lastAction: "No optimization applied yet",
+      lastAction:
+        "No optimization applied yet",
       history: [],
     });
   };
 
-  /* Simulated frontend telemetry.
-     Replace this later with backend/NPU data. */
+  /* =======================================================
+     SIMULATED FRONTEND TELEMETRY
+     Replace later with backend/NPU data.
+  ======================================================= */
+
   useEffect(() => {
     if (!sessionActive) return;
 
@@ -3063,3 +3264,4 @@ export default function App() {
     </>
   );
 }
+```
