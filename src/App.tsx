@@ -80,6 +80,33 @@ function isGeminiKeyConfigured(): boolean {
   return key.length > 10 && key !== "YOUR_GEMINI_API_KEY_HERE";
 }
 
+function sanitizeAIText(raw: string): string {
+  let text = raw;
+
+  // Remove leading numbered-list markers like "1. " or "1) "
+  text = text.replace(/^\s*\d+[\.\)]\s*/, "");
+
+  // Remove markdown bold/italic markers
+  text = text.replace(/\*\*/g, "");
+  text = text.replace(/\*/g, "");
+  text = text.replace(/__/g, "");
+  text = text.replace(/_/g, "");
+
+  // Remove markdown headers like "### "
+  text = text.replace(/^#+\s*/, "");
+
+  // Remove bullet markers like "- " or "• " at the start
+  text = text.replace(/^[-•]\s*/, "");
+
+  // Collapse multiple lines into one, take the first non-empty line
+  const firstLine = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)[0];
+
+  return (firstLine || text).trim();
+}
+
 async function getAIReasoning({
   fps,
   temperature,
@@ -116,7 +143,15 @@ async function getAIReasoning({
             {
               parts: [
                 {
-                  text: `You are VMAX, an AI gaming performance system. Current state: FPS=${fps}, SOC temperature=${temperature}°C. Action just taken: "${action}". In one short sentence (under 18 words), explain WHY this action makes sense given these numbers. Punchy, technical tone. No preamble, just the sentence.`,
+                  text: `You are VMAX, an AI gaming performance system. Current state: FPS=${fps}, SOC temperature=${temperature}°C. Action just taken: "${action}".
+
+Write exactly ONE plain sentence (under 18 words) explaining why this action makes sense given these numbers.
+
+Strict rules:
+- Plain text only. No markdown, no asterisks, no bold, no numbering, no bullet points, no headers.
+- Do not restate "1." or use any list format.
+- Do not add a title or label before the sentence.
+- Output ONLY the sentence itself, nothing else.`,
                 },
               ],
             },
@@ -153,9 +188,13 @@ async function getAIReasoning({
           .trim()
       : "";
 
-    console.log("Extracted text:", text);
+    console.log("Extracted text (raw):", text);
 
-    return text.length > 3 ? text : action;
+    const cleaned = sanitizeAIText(text);
+
+    console.log("Extracted text (cleaned):", cleaned);
+
+    return cleaned.length > 3 ? cleaned : action;
   } catch (err) {
     console.error("Gemini API error:", err);
     return action;
