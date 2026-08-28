@@ -73,7 +73,7 @@ const F = {
    server in a real deployment).
 ========================================================= */
 
-const GEMINI_API_KEY = "AQ.Ab8RN6IaaTihIITVTUs6Oa0VQSeexNoNB4ggUKvQClEntB_pRQ";
+const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE";
 
 function isGeminiKeyConfigured(): boolean {
   const key = (GEMINI_API_KEY || "").trim();
