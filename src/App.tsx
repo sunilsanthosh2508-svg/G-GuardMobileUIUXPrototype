@@ -1,4 +1,3 @@
-```tsx
 import React, { useEffect, useState } from "react";
 
 /* =========================================================
@@ -67,91 +66,250 @@ const F = {
    ---------------------------------------------------------
    Frontend-only prototype.
 
-   IMPORTANT:
-   Never commit a real Groq API key to GitHub.
+   Reads its configuration from a Vite environment variable:
+     VITE_GROQ_API_KEY   - required, your Groq API key
 
-   Replace the placeholder below with your own NEW Groq key
-   for local/hackathon prototype testing.
-
-   For a production deployment, use a backend/serverless
-   function so the API key is not exposed in the browser.
+   SECURITY NOTE:
+   This is a Vite frontend, so VITE_GROQ_API_KEY is bundled into the
+   client JS and can be read by anyone who inspects the app. That is
+   fine for a hackathon/demo prototype, but it is NOT secure for a
+   production app. For production, move askGroq()'s fetch call behind
+   a server-side endpoint (e.g. a Netlify Function) that holds the
+   real key and proxies the request, and call that endpoint instead.
 ========================================================= */
 
-const GROQ_API_KEY = "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";
+const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+const GROQ_API_KEY: string | undefined = import.meta.env
+  .VITE_GROQ_API_KEY as string | undefined;
+
+const GROQ_MODEL = "llama-3.3-70b-versatile";
 
 function isGroqKeyConfigured(): boolean {
-  return (
-    GROQ_API_KEY.trim().length > 0 &&
-    GROQ_API_KEY !== "PASTE_MY_GROQ_GSK_KEY_HERE"
-  );
+  return typeof GROQ_API_KEY === "string" && GROQ_API_KEY.trim().length > 0;
 }
 
-async function getAIReasoning({
-  fps,
-  temperature,
-  action,
-}: {
+const VMAX_SYSTEM_PROMPT =
+  "You are VMAX Gaming Performance AI, an assistant built into a mobile gaming-performance dashboard. " +
+  "Analyze the gaming telemetry provided by the application, using the actual FPS, CPU, GPU, RAM and " +
+  "temperature values given to you. Do NOT invent hardware changes, and do NOT claim that a system setting " +
+  "was actually changed — this is a frontend-only prototype. Never use generic filler phrases such as " +
+  "'Adaptive optimization applied.' Return exactly three short parts: 'Detection:' the specific current " +
+  "condition, 'Recommendation:' one specific optimization action, and 'Reason:' a short explanation based on " +
+  "the actual metrics. Recommendations must be specific and relevant to the metrics given — for example: " +
+  "Reduce background workload, Prioritize FPS stability, Reduce thermal load, Maintain balanced performance, " +
+  "Prioritize GPU performance, or Reduce unnecessary memory usage. Keep the whole reply concise, under 80 " +
+  "words, plain text, no markdown headers or bullet lists.";
+
+type VmaxAiState = {
   fps: number;
   temperature: number;
+  cpuUsage?: number;
+  gpuUsage?: number;
+  ramUsage?: number;
+  performanceMode?: string;
+  thermalStatus?: string;
+  fpsStatus?: string;
+  optimizationStatus?: string;
+  activeAlerts?: string[];
+  sessionInfo?: string;
   action: string;
-}): Promise<string> {
+};
+
+function deriveThermalStatus(temperature: number): string {
+  if (temperature >= 46) return "Warning";
+  if (temperature >= 43) return "Elevated";
+  return "Optimal";
+}
+
+function deriveFpsStatus(fps: number): string {
+  if (fps >= 108) return "Stable";
+  if (fps >= 96) return "Fluctuating";
+  return "Unstable";
+}
+
+function buildVmaxStatePrompt(state: VmaxAiState): string {
+  const lines = [
+    "Current VMAX Gaming State:",
+    "",
+    `FPS: ${state.fps}`,
+    `FPS Status: ${state.fpsStatus ?? deriveFpsStatus(state.fps)}`,
+    `Temperature: ${state.temperature}°C`,
+    `Thermal Status: ${state.thermalStatus ?? deriveThermalStatus(state.temperature)}`,
+  ];
+
+  if (state.cpuUsage !== undefined) {
+    lines.push(`CPU Usage: ${state.cpuUsage}%`);
+  }
+
+  if (state.gpuUsage !== undefined) {
+    lines.push(`GPU Usage: ${state.gpuUsage}%`);
+  }
+
+  if (state.ramUsage !== undefined) {
+    lines.push(`RAM Usage: ${state.ramUsage}%`);
+  }
+
+  lines.push(
+    `Performance Mode: ${state.performanceMode ?? "Balanced"}`,
+    `Optimization Status: ${state.optimizationStatus ?? "Not yet optimized"}`,
+    `Active Alerts: ${
+      state.activeAlerts && state.activeAlerts.length
+        ? state.activeAlerts.join(", ")
+        : "None"
+    }`
+  );
+
+  if (state.sessionInfo) {
+    lines.push(`Session: ${state.sessionInfo}`);
+  }
+
+  lines.push("", `Requested Action: ${state.action}`, "", "Analyze this state and give the best recommended optimization.");
+
+  return lines.join("\n");
+}
+
+/* ---------------------------------------------------------
+   Low-level Groq call.
+   Sends a system + user message to the Groq OpenAI-compatible
+   chat/completions endpoint and returns the assistant's reply text.
+--------------------------------------------------------- */
+async function askGroq(prompt: string): Promise<string> {
+  if (!isGroqKeyConfigured()) {
+    throw new Error("MISSING_KEY");
+  }
+
+  let response: Response;
+
   try {
-    if (!isGroqKeyConfigured()) {
-      return "Maintain stable FPS while keeping device temperature within the optimal range.";
-    }
+    response = await fetch(GROQ_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [
+          {
+            role: "system",
+            content: VMAX_SYSTEM_PROMPT,
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 0.3,
+      }),
+    });
+  } catch (networkError) {
+    console.error("Groq network error:", networkError);
+    throw new Error("NETWORK_ERROR");
+  }
 
-    const response = await fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${GROQ_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are VMAX AI Gaming Optimizer. Give one short gaming optimization recommendation based on FPS and device temperature.",
-            },
-            {
-              role: "user",
-              content: `FPS: ${fps}
-Temperature: ${temperature}°C
-Action: ${action}
-
-Give only one short gaming optimization recommendation sentence.`,
-            },
-          ],
-          temperature: 0.7,
-          max_tokens: 60,
-        }),
-      }
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => "");
+    console.error(
+      `Groq API error ${response.status}:`,
+      errorBody
     );
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    if (response.status === 401) throw new Error("UNAUTHORIZED");
+    if (response.status === 403) throw new Error("FORBIDDEN");
+    if (response.status === 429) throw new Error("RATE_LIMITED");
 
-      throw new Error(
-        `Groq API error ${response.status}: ${errorText}`
-      );
-    }
+    throw new Error(`API_ERROR_${response.status}`);
+  }
 
-    const data = await response.json();
+  const data = await response.json();
 
-    const aiResponse =
-      data.choices?.[0]?.message?.content?.trim();
+  const aiResponse: string | undefined =
+    data?.choices?.[0]?.message?.content?.trim();
 
-    return (
-      aiResponse ||
-      "Maintain stable FPS while keeping device temperature within the optimal range."
-    );
+  if (!aiResponse) {
+    throw new Error("EMPTY_RESPONSE");
+  }
+
+  return aiResponse;
+}
+
+/* ---------------------------------------------------------
+   Local fallback recommendation.
+   Used when Groq is unavailable (no key, network error, rate
+   limit, etc.) so the Optimize feature still works offline.
+--------------------------------------------------------- */
+function getLocalFallbackRecommendation(state: VmaxAiState): string {
+  const thermalStatus =
+    state.thermalStatus ?? deriveThermalStatus(state.temperature);
+  const fpsStatus = state.fpsStatus ?? deriveFpsStatus(state.fps);
+
+  if (thermalStatus === "Warning") {
+    return `Detection: Temperature is elevated at ${state.temperature}°C. Recommendation: Thermal optimization recommended. Reason: Cooling headroom is reduced, which risks throttling. (Local fallback — Groq unavailable)`;
+  }
+
+  if (fpsStatus === "Unstable") {
+    return `Detection: FPS is unstable at ${state.fps}. Recommendation: FPS stability optimization recommended. Reason: Frame rate is below the stable target range. (Local fallback — Groq unavailable)`;
+  }
+
+  if (state.cpuUsage !== undefined && state.cpuUsage >= 85) {
+    return `Detection: CPU usage is elevated at ${state.cpuUsage}%. Recommendation: CPU workload optimization recommended. Reason: High CPU load can reduce headroom for stable frame pacing. (Local fallback — Groq unavailable)`;
+  }
+
+  return `Detection: FPS (${state.fps}) and temperature (${state.temperature}°C) are within normal range. Recommendation: System performance is stable — no major optimization is recommended. Reason: Current metrics do not indicate thermal or performance risk. (Local fallback — Groq unavailable)`;
+}
+
+/* ---------------------------------------------------------
+   Friendly, non-technical error copy for the UI. Full
+   technical detail stays in the console via askGroq's logs.
+--------------------------------------------------------- */
+function describeGroqError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+
+  switch (message) {
+    case "MISSING_KEY":
+      return "Groq API key is not configured.";
+    case "UNAUTHORIZED":
+      return "Groq authentication failed. Check your Groq API key.";
+    case "FORBIDDEN":
+      return "Groq access was denied. Check API permissions.";
+    case "RATE_LIMITED":
+      return "Groq rate limit reached. Try again shortly.";
+    case "NETWORK_ERROR":
+      return "Unable to connect to Groq. Check your internet connection.";
+    default:
+      return "Groq is temporarily unavailable. Using a local recommendation instead.";
+  }
+}
+
+/* ---------------------------------------------------------
+   High-level helper used by the UI. Builds the dynamic VMAX
+   state prompt, calls Groq, and falls back to a local
+   recommendation (labeled as such) if Groq cannot be reached.
+--------------------------------------------------------- */
+type AiReasoningResult = {
+  text: string;
+  source: "groq" | "fallback";
+  errorMessage?: string;
+};
+
+async function getAIReasoning(
+  state: VmaxAiState
+): Promise<AiReasoningResult> {
+  const prompt = buildVmaxStatePrompt(state);
+
+  try {
+    const text = await askGroq(prompt);
+    return { text, source: "groq" };
   } catch (error) {
-    console.error("Groq AI Error:", error);
+    const errorMessage = describeGroqError(error);
+    console.error("VMAX Groq reasoning failed:", errorMessage, error);
 
-    return "Optimization completed while maintaining stable FPS and thermal efficiency.";
+    return {
+      text: getLocalFallbackRecommendation(state),
+      source: "fallback",
+      errorMessage,
+    };
   }
 }
 
@@ -1482,7 +1640,7 @@ function ScreenMonitor({
           ACTIVE PROTECTION
         </div>
 
-        {[
+        {([
           [
             "AI Thermal Prediction",
             settings.thermalPrediction,
@@ -1492,9 +1650,9 @@ function ScreenMonitor({
             settings.autoOptimization,
           ],
           ["FPS Guard", settings.fpsGuard],
-        ].map(([label, enabled]) => (
+        ] as [string, boolean][]).map(([label, enabled]) => (
           <div
-            key={label}
+            key={String(label)}
             style={{
               display: "flex",
               justifyContent: "space-between",
@@ -1782,6 +1940,8 @@ function ScreenOptimize({
   notify,
   fps,
   temperature,
+  alerts,
+  settings,
 }: {
   go: (screen: Screen) => void;
   optimization: OptimizationState;
@@ -1791,28 +1951,70 @@ function ScreenOptimize({
   notify: (message: string) => void;
   fps: number;
   temperature: number;
+  alerts: AlertSettings;
+  settings: Settings;
 }) {
   const [thinking, setThinking] = useState(false);
 
+  const activeAlertLabels = (): string[] => {
+    const active: string[] = [];
+    if (alerts.thermal) active.push("Thermal Alerts");
+    if (alerts.fps) active.push("FPS Alerts");
+    if (alerts.optimization) active.push("Optimization Alerts");
+    return active;
+  };
+
+  const currentPerformanceMode = (): string => {
+    if (optimization.boost) return "Boost";
+    if (optimization.optimized) return "Optimized";
+    if (settings.autoOptimization) return "Balanced (Auto)";
+    return "Balanced";
+  };
+
+  const pushHistory = (
+    prev: OptimizationState,
+    entry: string
+  ): string[] => {
+    // Never add a duplicate consecutive entry.
+    if (prev.history[0] === entry) return prev.history;
+    return [entry, ...prev.history].slice(0, 10);
+  };
+
+  const runGroqAnalysis = async (action: string) => {
+    const result = await getAIReasoning({
+      fps,
+      temperature,
+      action,
+      performanceMode: currentPerformanceMode(),
+      optimizationStatus: optimization.optimized
+        ? "Previously optimized"
+        : "Not yet optimized",
+      activeAlerts: activeAlertLabels(),
+    });
+
+    if (result.source === "fallback" && result.errorMessage) {
+      notify(result.errorMessage);
+    }
+
+    return result.text;
+  };
+
   const applyOptimization = async () => {
+    if (thinking) return; // prevent overlapping requests
+
     setThinking(true);
 
     try {
-      const reasoning = await getAIReasoning({
-        fps,
-        temperature,
-        action: "Adaptive optimization applied",
-      });
+      const reasoning = await runGroqAnalysis(
+        "General optimization requested"
+      );
 
       setOptimization((prev) => ({
         ...prev,
         optimized: true,
         boost: false,
         lastAction: reasoning,
-        history: [
-          reasoning,
-          ...prev.history,
-        ].slice(0, 10),
+        history: pushHistory(prev, reasoning),
       }));
 
       notify("Optimization applied successfully");
@@ -1822,8 +2024,9 @@ function ScreenOptimize({
   };
 
   const boostNow = async () => {
-    const baseAction =
-      "Performance boost activated";
+    if (thinking) return; // prevent overlapping requests
+
+    const baseAction = "Performance boost activated";
 
     setThinking(true);
 
@@ -1835,19 +2038,12 @@ function ScreenOptimize({
     }));
 
     try {
-      const reasoning = await getAIReasoning({
-        fps,
-        temperature,
-        action: baseAction,
-      });
+      const reasoning = await runGroqAnalysis(baseAction);
 
       setOptimization((prev) => ({
         ...prev,
         lastAction: reasoning,
-        history: [
-          reasoning,
-          ...prev.history,
-        ].slice(0, 10),
+        history: pushHistory(prev, reasoning),
       }));
 
       notify("Performance Boost activated");
@@ -1857,18 +2053,14 @@ function ScreenOptimize({
   };
 
   const resetProfile = () => {
-    const baseAction =
-      "Profile reset to default";
+    const baseAction = "Profile reset to default";
 
-    setOptimization({
+    setOptimization((prev) => ({
       optimized: false,
       boost: false,
       lastAction: baseAction,
-      history: [
-        baseAction,
-        ...optimization.history,
-      ].slice(0, 10),
-    });
+      history: pushHistory(prev, baseAction),
+    }));
 
     notify("Performance profile reset");
   };
@@ -2026,7 +2218,7 @@ function ScreenOptimize({
         >
           {isGroqKeyConfigured()
             ? "✓ Groq AI Connected — Live optimization enabled"
-            : "⚠ Add your Groq GSK key to enable live AI optimization"}
+            : "⚠ Add your VITE_GROQ_API_KEY to enable live AI optimization"}
         </div>
       </Card>
 
@@ -2348,11 +2540,11 @@ function ScreenAnalytics({
           FPS DISTRIBUTION
         </div>
 
-        {[
+        {([
           ["110–120 FPS", 68, C.green],
           ["90–109 FPS", 24, C.yellow],
           ["BELOW 90 FPS", 8, C.red],
-        ].map(
+        ] as [string, number, string][]).map(
           ([label, value, color]) => (
             <div
               key={label}
@@ -3199,6 +3391,8 @@ export default function App() {
             notify={notify}
             fps={fps}
             temperature={temperature}
+            alerts={alerts}
+            settings={settings}
           />
         );
 
@@ -3264,4 +3458,3 @@ export default function App() {
     </>
   );
 }
-```
