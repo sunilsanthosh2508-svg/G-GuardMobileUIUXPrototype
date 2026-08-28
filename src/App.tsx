@@ -73,7 +73,12 @@ const F = {
    server in a real deployment).
 ========================================================= */
 
-const GEMINI_API_KEY = "AQ.Ab8RN6IaaTihIITVTUs6Oa0VQSeexNoNB4ggUKvQClEntB_pRQ";
+const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE";
+
+function isGeminiKeyConfigured(): boolean {
+  const key = (GEMINI_API_KEY || "").trim();
+  return key.length > 10 && key !== "YOUR_GEMINI_API_KEY_HERE";
+}
 
 async function getAIReasoning({
   fps,
@@ -84,9 +89,19 @@ async function getAIReasoning({
   temperature: number;
   action: string;
 }): Promise<string> {
+  console.log(
+    "Key configured?",
+    isGeminiKeyConfigured(),
+    "| Key length:",
+    (GEMINI_API_KEY || "").trim().length
+  );
+
   // Guard: if no key has been set, just return the original
   // action string so the app still works out of the box.
-  if (!GEMINI_API_KEY || GEMINI_API_KEY === "AQ.Ab8RN6IaaTihIITVTUs6Oa0VQSeexNoNB4ggUKvQClEntB_pRQ") {
+  if (!isGeminiKeyConfigured()) {
+    console.warn(
+      "Gemini API key not configured — using fallback text instead of a live call."
+    );
     return action;
   }
 
@@ -546,6 +561,66 @@ function ActionButton({
     >
       {children}
     </button>
+  );
+}
+
+function ThinkingBanner() {
+  const [dots, setDots] = useState(".");
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setDots((prev) => (prev.length >= 3 ? "." : prev + "."));
+    }, 350);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return (
+    <div
+      className="anim-slide"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "12px 14px",
+        borderRadius: 13,
+        background: `${C.cyan}12`,
+        border: `1px solid ${C.cyan}44`,
+        marginBottom: 10,
+      }}
+    >
+      <span
+        className="anim-thinking"
+        style={{ fontSize: 18 }}
+      >
+        🤖
+      </span>
+
+      <div>
+        <div
+          style={{
+            fontFamily: F.display,
+            fontSize: 10,
+            fontWeight: 700,
+            color: C.cyan,
+            letterSpacing: ".08em",
+          }}
+        >
+          AI IS THINKING{dots}
+        </div>
+
+        <div
+          style={{
+            marginTop: 2,
+            fontFamily: F.mono,
+            fontSize: 7,
+            color: C.mute,
+          }}
+        >
+          Analyzing live FPS &amp; thermal data
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1761,6 +1836,8 @@ function ScreenOptimize({
         tagColor={optimization.optimized ? C.green : C.yellow}
       />
 
+      {thinking && <ThinkingBanner />}
+
       <Card
         style={{
           padding: 17,
@@ -1837,18 +1914,18 @@ function ScreenOptimize({
           {optimization.lastAction}
         </div>
 
-        {GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE" && (
-          <div
-            style={{
-              marginTop: 8,
-              fontFamily: F.mono,
-              fontSize: 7,
-              color: "#5a6270",
-            }}
-          >
-            ⚠ Add your Gemini API key to enable live AI reasoning
-          </div>
-        )}
+        <div
+          style={{
+            marginTop: 8,
+            fontFamily: F.mono,
+            fontSize: 7,
+            color: isGeminiKeyConfigured() ? C.green : "#5a6270",
+          }}
+        >
+          {isGeminiKeyConfigured()
+            ? "✓ Gemini API key detected — live reasoning enabled"
+            : "⚠ Add your Gemini API key to enable live AI reasoning"}
+        </div>
       </Card>
 
       <Card style={{ padding: 15, marginBottom: 10 }}>
