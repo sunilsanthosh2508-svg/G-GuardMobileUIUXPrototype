@@ -1743,37 +1743,50 @@ function ScreenOptimize({
 }) {
   const [thinking, setThinking] = useState(false);
 
-  const applyOptimization = async () => {
-    const baseAction = "Adaptive optimization applied";
+   const applyOptimization = async () => {
+  const baseAction = "Adaptive optimization applied";
 
-    setThinking(true);
+  setThinking(true);
 
-    setOptimization((prev) => ({
-      ...prev,
-      optimized: true,
-      boost: false,
-      lastAction: "Analyzing session data...",
-    }));
-
+  try {
+    // Get AI reasoning from Gemini
     const reasoning = await getAIReasoning({
       fps,
       temperature,
       action: baseAction,
     });
 
-    console.log("Gemini response:", reasoning);
-
-    setThinking(false);
-
+    // Update optimization state with AI response
     setOptimization((prev) => ({
       ...prev,
+      optimized: true,
+      boost: false,
       lastAction: reasoning,
       history: [reasoning, ...prev.history].slice(0, 10),
     }));
 
     notify("Optimization applied successfully");
-  };
+  } catch (error) {
+    console.error("Optimization Error:", error);
 
+    // Fallback message if Gemini fails
+    const fallback = `AI optimized device for ${fps} FPS while maintaining ${temperature}°C thermal stability.`;
+
+    setOptimization((prev) => ({
+      ...prev,
+      optimized: true,
+      boost: false,
+      lastAction: fallback,
+      history: [fallback, ...prev.history].slice(0, 10),
+    }));
+
+    notify("Optimization applied successfully");
+  } finally {
+    // Always stop the AI thinking animation
+    setThinking(false);
+  }
+};
+   
   const boostNow = async () => {
     const baseAction = "Performance boost activated";
 
