@@ -1,16 +1,10 @@
-import React, { useState } from "react";
-
-/* =========================================================
-   VMAX
-   AI-POWERED GAMING PERFORMANCE
-========================================================= */
+import React, { useEffect, useState } from "react";
 
 type Screen = "setup" | "monitor";
 
 const C = {
   bg: "#07090d",
   panel: "#10141b",
-  panel2: "#151a22",
   white: "#ffffff",
   mute: "#8b96a5",
   cyan: "#00e5ff",
@@ -18,7 +12,6 @@ const C = {
   yellow: "#ffd600",
   red: "#ff3d71",
   purple: "#9d4edd",
-  orange: "#ff6b1a",
 };
 
 const F = {
@@ -121,7 +114,7 @@ function Tag({
 }
 
 /* =========================================================
-   PROGRESS BAR
+   BAR
 ========================================================= */
 
 function Bar({
@@ -280,7 +273,9 @@ function ScreenSetup({
         gap: 10,
       }}
     >
-      {/* HEADER */}
+      {/* =================================================
+          HEADER
+      ================================================= */}
 
       <div style={{ marginBottom: 4 }}>
         <p
@@ -292,7 +287,7 @@ function ScreenSetup({
             letterSpacing: "0.12em",
           }}
         >
-          CHENNAI BATTLE · GAMING SYSTEM
+          GAMING PERFORMANCE SYSTEM
         </p>
 
         <div
@@ -305,18 +300,19 @@ function ScreenSetup({
           <h1
             style={{
               fontFamily: F.display,
-              fontSize: 25,
-              fontWeight: 800,
+              fontSize: 27,
+              fontWeight: 900,
               color: C.white,
               margin: "4px 0 0",
-              letterSpacing: "0.08em",
+              letterSpacing: "0.1em",
+              textShadow: `0 0 20px ${C.cyan}25`,
             }}
           >
             VMAX
           </h1>
 
           <Tag
-            label="AI PERFORMANCE"
+            label="AI POWERED"
             color={C.cyan}
           />
         </div>
@@ -326,14 +322,16 @@ function ScreenSetup({
             fontFamily: F.body,
             fontSize: 10,
             color: C.mute,
-            margin: "3px 0 0",
+            margin: "4px 0 0",
           }}
         >
-          AI-powered gaming performance & thermal intelligence
+          AI-POWERED GAMING PERFORMANCE
         </p>
       </div>
 
-      {/* GAME CARD */}
+      {/* =================================================
+          GAME CARD
+      ================================================= */}
 
       <div
         style={{
@@ -450,7 +448,9 @@ function ScreenSetup({
         </div>
       </div>
 
-      {/* THERMAL READINESS */}
+      {/* =================================================
+          THERMAL READINESS
+      ================================================= */}
 
       <Card style={{ padding: 14 }}>
         <div
@@ -536,7 +536,9 @@ function ScreenSetup({
         </div>
       </Card>
 
-      {/* CONFIGURATION */}
+      {/* =================================================
+          VMAX CONTROL
+      ================================================= */}
 
       <Card style={{ padding: 14 }}>
         <div
@@ -629,7 +631,9 @@ function ScreenSetup({
         )}
       </Card>
 
-      {/* ACTIVE PROTECTIONS */}
+      {/* =================================================
+          ACTIVE PROTECTIONS
+      ================================================= */}
 
       <Card
         style={{
@@ -672,11 +676,7 @@ function ScreenSetup({
           </span>
         </div>
 
-        <div
-          style={{
-            marginTop: 8,
-          }}
-        >
+        <div style={{ marginTop: 8 }}>
           <Bar
             pct={(activeCount / 3) * 100}
             color={
@@ -691,7 +691,9 @@ function ScreenSetup({
         </div>
       </Card>
 
-      {/* LAUNCH */}
+      {/* =================================================
+          LAUNCH GAME
+      ================================================= */}
 
       <button
         type="button"
@@ -725,7 +727,7 @@ function ScreenSetup({
           letterSpacing: "0.08em",
         }}
       >
-        VMAX · CHENNAI BATTLE PROTOTYPE
+        VMAX · AI-POWERED GAMING PERFORMANCE
       </div>
     </div>
   );
@@ -743,15 +745,19 @@ function ScreenMonitor({
   const [temperature, setTemperature] = useState(42);
   const [fps, setFps] = useState(118);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const timer = setInterval(() => {
       setTemperature((old) => {
-        const next = old + (Math.random() > 0.5 ? 1 : -1);
+        const next =
+          old + (Math.random() > 0.5 ? 1 : -1);
+
         return Math.max(39, Math.min(49, next));
       });
 
       setFps((old) => {
-        const next = old + (Math.random() > 0.5 ? 1 : -1);
+        const next =
+          old + (Math.random() > 0.5 ? 1 : -1);
+
         return Math.max(108, Math.min(120, next));
       });
     }, 1500);
@@ -803,6 +809,7 @@ function ScreenMonitor({
             fontFamily: F.mono,
             fontSize: 9,
             cursor: "pointer",
+            padding: 0,
           }}
         >
           ← BACK
@@ -811,7 +818,7 @@ function ScreenMonitor({
         <div
           style={{
             fontFamily: F.display,
-            fontSize: 17,
+            fontSize: 18,
             fontWeight: 800,
             color: C.white,
             letterSpacing: "0.1em",
@@ -967,7 +974,7 @@ function ScreenMonitor({
         </Card>
       </div>
 
-      {/* AI PREDICTION */}
+      {/* AI THERMAL PREDICTION */}
 
       <Card
         style={{
@@ -1009,6 +1016,7 @@ function ScreenMonitor({
           </div>
 
           <div
+            className="anim-pulse"
             style={{
               width: 45,
               height: 45,
@@ -1189,7 +1197,7 @@ function ScreenMonitor({
         </div>
       </Card>
 
-      {/* STOP GAME */}
+      {/* END SESSION */}
 
       <button
         type="button"
@@ -1211,6 +1219,18 @@ function ScreenMonitor({
       >
         END SESSION
       </button>
+
+      <div
+        style={{
+          textAlign: "center",
+          fontFamily: F.mono,
+          fontSize: 7,
+          color: C.mute,
+          marginTop: 12,
+        }}
+      >
+        VMAX · AI-POWERED GAMING PERFORMANCE
+      </div>
     </div>
   );
 }
@@ -1223,8 +1243,9 @@ export default function App() {
   const [screen, setScreen] =
     useState<Screen>("setup");
 
-  React.useEffect(() => {
+  useEffect(() => {
     const style = document.createElement("style");
+
     style.innerHTML = `
       @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
       @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700&display=swap');
@@ -1239,16 +1260,26 @@ export default function App() {
       #root {
         margin: 0;
         padding: 0;
+        width: 100%;
         min-height: 100%;
         background: #07090d;
       }
 
       body {
         font-family: 'Exo 2', sans-serif;
+        overflow-x: hidden;
       }
 
       button {
         -webkit-tap-highlight-color: transparent;
+      }
+
+      *::-webkit-scrollbar {
+        display: none;
+      }
+
+      * {
+        scrollbar-width: none;
       }
 
       @keyframes pulse-glow {
@@ -1280,14 +1311,6 @@ export default function App() {
       .anim-slide {
         animation: slide-in 0.35s ease-out both;
       }
-
-      *::-webkit-scrollbar {
-        display: none;
-      }
-
-      * {
-        scrollbar-width: none;
-      }
     `;
 
     document.head.appendChild(style);
@@ -1301,6 +1324,7 @@ export default function App() {
     <main
       style={{
         minHeight: "100vh",
+        width: "100%",
         background:
           "radial-gradient(circle at top, #101725 0%, #07090d 45%, #050609 100%)",
         color: C.white,
