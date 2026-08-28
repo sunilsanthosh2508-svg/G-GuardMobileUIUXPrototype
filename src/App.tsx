@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { GoogleGenAI } from "@google/genai";
 
 /* =========================================================
    VMAX — AI-POWERED GAMING PERFORMANCE
@@ -83,44 +82,8 @@ const F = {
    the bundle or network traffic).
 ========================================================= */
 
-const GEMINI_API_KEY = "AQ.Ab8RN6KfPQBQbaPEApzIOm6PWGxZX96SGYUGxOF8nf6UTd80HQ";
+const GROQ_API_KEY = "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";
 
-function isGeminiKeyConfigured(): boolean {
-  const key = (GEMINI_API_KEY || "").trim();
-  return key.length > 10 && key !== "PASTE_YOUR_GEMINI_AQ_AUTH_KEY_HERE";
-}
-
-// Single shared SDK client instance.
-const ai = new GoogleGenAI({
-  apiKey: GEMINI_API_KEY,
-});
-
-function sanitizeAIText(raw: string): string {
-  let text = raw;
-
-  // Remove leading numbered-list markers like "1. " or "1) "
-  text = text.replace(/^\s*\d+[\.\)]\s*/, "");
-
-  // Remove markdown bold/italic markers
-  text = text.replace(/\*\*/g, "");
-  text = text.replace(/\*/g, "");
-  text = text.replace(/__/g, "");
-  text = text.replace(/_/g, "");
-
-  // Remove markdown headers like "### "
-  text = text.replace(/^#+\s*/, "");
-
-  // Remove bullet markers like "- " or "• " at the start
-  text = text.replace(/^[-•]\s*/, "");
-
-  // Collapse multiple lines into one, take the first non-empty line
-  const firstLine = text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)[0];
-
-  return (firstLine || text).trim();
-}
 
 async function getAIReasoning({
   fps,
@@ -131,41 +94,54 @@ async function getAIReasoning({
   temperature: number;
   action: string;
 }): Promise<string> {
-  const fallback = `AI optimized performance for ${fps} FPS while maintaining ${temperature}°C thermal stability.`;
-
-  if (!isGeminiKeyConfigured()) {
-    return fallback;
-  }
-
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `You are VMAX AI Gaming Optimizer.
-
-FPS: ${fps}
+    const response = await fetch(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are VMAX AI Gaming Optimizer. Give one short optimization recommendation.",
+            },
+            {
+              role: "user",
+              content: `FPS: ${fps}
 Temperature: ${temperature}°C
 Action: ${action}
 
-Give ONE short sentence explaining the optimization result. Plain text only.`,
-    });
+Give one short optimization sentence only.`,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: 60,
+        }),
+      }
+    );
 
-    // The @google/genai SDK exposes the generated text directly
-    // via the `.text` property on the response.
-    const text = response?.text;
-
-    if (!text || !text.trim()) {
-      return fallback;
+    if (!response.ok) {
+      throw new Error(await response.text());
     }
 
-    return sanitizeAIText(text);
-  } catch (err) {
-    console.error("Gemini Error:", err);
-    // Graceful fallback so the UI never breaks if the SDK call fails
-    // (bad/missing key, network issue, rate limit, etc.)
-    return `AI optimized CPU and GPU for stable ${fps} FPS at ${temperature}°C.`;
+    const data = await response.json();
+
+    return (
+      data.choices?.[0]?.message?.content ||
+      "Optimization completed successfully."
+    );
+  } catch (error) {
+    console.error("Groq Error:", error);
+
+    return "AI optimization completed successfully while maintaining stable FPS and thermal efficiency.";
   }
 }
-
 /* =========================================================
    GLOBAL CSS
 ========================================================= */
@@ -1738,36 +1714,29 @@ function ScreenOptimize({
 }) {
   const [thinking, setThinking] = useState(false);
 
-  const applyOptimization = async () => {
-    const baseAction = "Adaptive optimization applied";
+const applyOptimization = async () => {
+  setThinking(true);
 
-    setThinking(true);
+  try {
+    const reasoning = await getAIReasoning({
+      fps,
+      temperature,
+      action: "Adaptive optimization applied",
+    });
 
     setOptimization((prev) => ({
       ...prev,
       optimized: true,
       boost: false,
-      lastAction: "Analyzing session data...",
+      lastAction: reasoning,
+      history: [reasoning, ...prev.history].slice(0, 10),
     }));
 
-    try {
-      const reasoning = await getAIReasoning({
-        fps,
-        temperature,
-        action: baseAction,
-      });
-
-      setOptimization((prev) => ({
-        ...prev,
-        lastAction: reasoning,
-        history: [reasoning, ...prev.history].slice(0, 10),
-      }));
-
-      notify("Optimization applied successfully");
-    } finally {
-      setThinking(false);
-    }
-  };
+    notify("Optimization applied successfully");
+  } finally {
+    setThinking(false);
+  }
+};
 
   const boostNow = async () => {
     const baseAction = "Performance boost activated";
