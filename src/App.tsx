@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { GoogleGenAI } from "@google/genai";
 
 /* =========================================================
    VMAX — AI-POWERED GAMING PERFORMANCE
@@ -62,23 +63,37 @@ const F = {
 };
 
 /* =========================================================
-   GEMINI API — AI REASONING FEATURE
+   GEMINI SDK — AI REASONING FEATURE
    -----------------------------------------------------------
-   IMPORTANT: Paste your OWN Gemini API key below before running.
-   Get one free at: https://aistudio.google.com/app/apikey
+   Uses the official @google/genai SDK instead of a raw REST
+   fetch() call. Install it first:
 
-   Never commit a real key to a public repo. For a hackathon
-   demo, paste it locally right before presenting and remove
-   it again afterward (or use an env variable / small proxy
-   server in a real deployment).
+     npm install @google/genai
+
+   IMPORTANT: Paste your OWN Gemini credential below before
+   running. This project uses an "AQ" style auth key (not the
+   older "AIza..." API key format) — the SDK accepts it the
+   same way, via the `apiKey` field.
+
+   Never commit a real credential to a public repo. For a
+   hackathon demo, paste it locally right before presenting
+   and remove it again afterward (or use an env variable / a
+   small proxy server in a real deployment, since any key
+   embedded in frontend code is visible to anyone who inspects
+   the bundle or network traffic).
 ========================================================= */
 
 const GEMINI_API_KEY = "AQ.Ab8RN6KfPQBQbaPEApzIOm6PWGxZX96SGYUGxOF8nf6UTd80HQ";
 
 function isGeminiKeyConfigured(): boolean {
   const key = (GEMINI_API_KEY || "").trim();
-  return key.length > 10 && key !== "YOUR_GEMINI_API_KEY_HERE";
+  return key.length > 10 && key !== "PASTE_YOUR_GEMINI_AQ_AUTH_KEY_HERE";
 }
+
+// Single shared SDK client instance.
+const ai = new GoogleGenAI({
+  apiKey: GEMINI_API_KEY,
+});
 
 function sanitizeAIText(raw: string): string {
   let text = raw;
@@ -116,57 +131,37 @@ async function getAIReasoning({
   temperature: number;
   action: string;
 }): Promise<string> {
+  const fallback = `AI optimized performance for ${fps} FPS while maintaining ${temperature}°C thermal stability.`;
+
   if (!isGeminiKeyConfigured()) {
-    return `AI optimized performance for ${fps} FPS while maintaining ${temperature}°C thermal stability.`;
+    return fallback;
   }
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `You are VMAX AI Gaming Optimizer.
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `You are VMAX AI Gaming Optimizer.
 
 FPS: ${fps}
 Temperature: ${temperature}°C
 Action: ${action}
 
 Give ONE short sentence explaining the optimization result. Plain text only.`,
-                },
-              ],
-            },
-          ],
-        }),
-      }
-    );
+    });
 
-    clearTimeout(timeout);
+    // The @google/genai SDK exposes the generated text directly
+    // via the `.text` property on the response.
+    const text = response?.text;
 
-    if (!response.ok) {
-      console.error(await response.text());
-      return `Performance optimized successfully at ${fps} FPS.`;
+    if (!text || !text.trim()) {
+      return fallback;
     }
 
-    const data = await response.json();
-
-    return (
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      `Performance optimized successfully at ${fps} FPS.`
-    );
+    return sanitizeAIText(text);
   } catch (err) {
     console.error("Gemini Error:", err);
+    // Graceful fallback so the UI never breaks if the SDK call fails
+    // (bad/missing key, network issue, rate limit, etc.)
     return `AI optimized CPU and GPU for stable ${fps} FPS at ${temperature}°C.`;
   }
 }
@@ -1721,7 +1716,7 @@ function ScreenAlert({
 
 /* =========================================================
    OPTIMIZE
-   (now with live Gemini-generated reasoning)
+   (now with live Gemini-generated reasoning via @google/genai)
 ========================================================= */
 
 function ScreenOptimize({
@@ -1743,50 +1738,37 @@ function ScreenOptimize({
 }) {
   const [thinking, setThinking] = useState(false);
 
-   const applyOptimization = async () => {
-  const baseAction = "Adaptive optimization applied";
+  const applyOptimization = async () => {
+    const baseAction = "Adaptive optimization applied";
 
-  setThinking(true);
-
-  try {
-    // Get AI reasoning from Gemini
-    const reasoning = await getAIReasoning({
-      fps,
-      temperature,
-      action: baseAction,
-    });
-
-    // Update optimization state with AI response
-    setOptimization((prev) => ({
-      ...prev,
-      optimized: true,
-      boost: false,
-      lastAction: reasoning,
-      history: [reasoning, ...prev.history].slice(0, 10),
-    }));
-
-    notify("Optimization applied successfully");
-  } catch (error) {
-    console.error("Optimization Error:", error);
-
-    // Fallback message if Gemini fails
-    const fallback = `AI optimized device for ${fps} FPS while maintaining ${temperature}°C thermal stability.`;
+    setThinking(true);
 
     setOptimization((prev) => ({
       ...prev,
       optimized: true,
       boost: false,
-      lastAction: fallback,
-      history: [fallback, ...prev.history].slice(0, 10),
+      lastAction: "Analyzing session data...",
     }));
 
-    notify("Optimization applied successfully");
-  } finally {
-    // Always stop the AI thinking animation
-    setThinking(false);
-  }
-};
-   
+    try {
+      const reasoning = await getAIReasoning({
+        fps,
+        temperature,
+        action: baseAction,
+      });
+
+      setOptimization((prev) => ({
+        ...prev,
+        lastAction: reasoning,
+        history: [reasoning, ...prev.history].slice(0, 10),
+      }));
+
+      notify("Optimization applied successfully");
+    } finally {
+      setThinking(false);
+    }
+  };
+
   const boostNow = async () => {
     const baseAction = "Performance boost activated";
 
@@ -1799,23 +1781,23 @@ function ScreenOptimize({
       lastAction: "Analyzing session data...",
     }));
 
-    const reasoning = await getAIReasoning({
-      fps,
-      temperature,
-      action: baseAction,
-    });
+    try {
+      const reasoning = await getAIReasoning({
+        fps,
+        temperature,
+        action: baseAction,
+      });
 
-    console.log("Gemini response:", reasoning);
+      setOptimization((prev) => ({
+        ...prev,
+        lastAction: reasoning,
+        history: [reasoning, ...prev.history].slice(0, 10),
+      }));
 
-    setThinking(false);
-
-    setOptimization((prev) => ({
-      ...prev,
-      lastAction: reasoning,
-      history: [reasoning, ...prev.history].slice(0, 10),
-    }));
-
-    notify("Performance Boost activated");
+      notify("Performance Boost activated");
+    } finally {
+      setThinking(false);
+    }
   };
 
   const resetProfile = () => {
@@ -1956,8 +1938,8 @@ function ScreenOptimize({
           }}
         >
           {isGeminiKeyConfigured()
-            ? "✓ Gemini API key detected — live reasoning enabled"
-            : "⚠ Add your Gemini API key to enable live AI reasoning"}
+            ? "✓ Gemini credential detected — live reasoning enabled"
+            : "⚠ Add your Gemini AQ auth key to enable live AI reasoning"}
         </div>
       </Card>
 
