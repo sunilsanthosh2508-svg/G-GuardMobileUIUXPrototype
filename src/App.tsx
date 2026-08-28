@@ -86,7 +86,7 @@ async function getAIReasoning({
 }): Promise<string> {
   // Guard: if no key has been set, just return the original
   // action string so the app still works out of the box.
-  if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE") {
+  if (!GEMINI_API_KEY || GEMINI_API_KEY === "AQ.Ab8RN6IaaTihIITVTUs6Oa0VQSeexNoNB4ggUKvQClEntB_pRQ") {
     return action;
   }
 
@@ -114,12 +114,18 @@ async function getAIReasoning({
       }
     );
 
+    console.log("Gemini raw HTTP status:", response.status);
+
     if (!response.ok) {
+      const errorBody = await response.text();
       console.error("Gemini API error status:", response.status);
+      console.error("Gemini API error body:", errorBody);
       return action;
     }
 
     const data = await response.json();
+    console.log("Gemini raw response data:", data);
+
     const text =
       data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
@@ -1660,6 +1666,8 @@ function ScreenOptimize({
       action: baseAction,
     });
 
+    console.log("Gemini response:", reasoning);
+
     setThinking(false);
 
     setOptimization((prev) => ({
@@ -1688,6 +1696,8 @@ function ScreenOptimize({
       temperature,
       action: baseAction,
     });
+
+    console.log("Gemini response:", reasoning);
 
     setThinking(false);
 
