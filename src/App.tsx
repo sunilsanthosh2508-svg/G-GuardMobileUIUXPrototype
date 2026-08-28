@@ -122,8 +122,11 @@ async function getAIReasoning({
             },
           ],
           generationConfig: {
-            maxOutputTokens: 60,
+            maxOutputTokens: 200,
             temperature: 0.7,
+            thinkingConfig: {
+              thinkingBudget: 0,
+            },
           },
         }),
       }
@@ -139,12 +142,20 @@ async function getAIReasoning({
     }
 
     const data = await response.json();
-    console.log("Gemini raw response data:", data);
+    console.log("Gemini raw response data:", JSON.stringify(data));
 
-    const text =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const parts = data?.candidates?.[0]?.content?.parts;
 
-    return text || action;
+    const text = Array.isArray(parts)
+      ? parts
+          .map((p: any) => p?.text || "")
+          .join(" ")
+          .trim()
+      : "";
+
+    console.log("Extracted text:", text);
+
+    return text.length > 3 ? text : action;
   } catch (err) {
     console.error("Gemini API error:", err);
     return action;
