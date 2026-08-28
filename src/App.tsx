@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 /* =========================================================
    VMAX — AI-POWERED GAMING PERFORMANCE
    Frontend-only prototype
-   8 Screens + Working Controls
+   8 Screens + Working Controls + Gemini-powered reasoning
 ========================================================= */
 
 type Screen =
@@ -60,6 +60,75 @@ const F = {
   body: "'Exo 2', sans-serif",
   mono: "'JetBrains Mono', monospace",
 };
+
+/* =========================================================
+   GEMINI API — AI REASONING FEATURE
+   -----------------------------------------------------------
+   IMPORTANT: Paste your OWN Gemini API key below before running.
+   Get one free at: https://aistudio.google.com/app/apikey
+
+   Never commit a real key to a public repo. For a hackathon
+   demo, paste it locally right before presenting and remove
+   it again afterward (or use an env variable / small proxy
+   server in a real deployment).
+========================================================= */
+
+const GEMINI_API_KEY = "AQ.Ab8RN6IaaTihIITVTUs6Oa0VQSeexNoNB4ggUKvQClEntB_pRQ";
+
+async function getAIReasoning({
+  fps,
+  temperature,
+  action,
+}: {
+  fps: number;
+  temperature: number;
+  action: string;
+}): Promise<string> {
+  // Guard: if no key has been set, just return the original
+  // action string so the app still works out of the box.
+  if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE") {
+    return action;
+  }
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `You are VMAX, an AI gaming performance system. Current state: FPS=${fps}, SOC temperature=${temperature}°C. Action just taken: "${action}". In one short sentence (under 18 words), explain WHY this action makes sense given these numbers. Punchy, technical tone. No preamble, just the sentence.`,
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            maxOutputTokens: 60,
+            temperature: 0.7,
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error("Gemini API error status:", response.status);
+      return action;
+    }
+
+    const data = await response.json();
+    const text =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+    return text || action;
+  } catch (err) {
+    console.error("Gemini API error:", err);
+    return action;
+  }
+}
 
 /* =========================================================
    GLOBAL CSS
@@ -134,6 +203,11 @@ function GlobalStyles() {
         }
       }
 
+      @keyframes spin-slow {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
       .anim-slide {
         animation: slide-in .3s ease-out both;
       }
@@ -148,6 +222,11 @@ function GlobalStyles() {
 
       .anim-glow {
         animation: glow 2s ease-in-out infinite;
+      }
+
+      .anim-thinking {
+        animation: spin-slow 1s linear infinite;
+        display: inline-block;
       }
     `;
 
@@ -1541,6 +1620,7 @@ function ScreenAlert({
 
 /* =========================================================
    OPTIMIZE
+   (now with live Gemini-generated reasoning)
 ========================================================= */
 
 function ScreenOptimize({
@@ -1548,6 +1628,8 @@ function ScreenOptimize({
   optimization,
   setOptimization,
   notify,
+  fps,
+  temperature,
 }: {
   go: (screen: Screen) => void;
   optimization: OptimizationState;
@@ -1555,46 +1637,77 @@ function ScreenOptimize({
     React.SetStateAction<OptimizationState>
   >;
   notify: (message: string) => void;
+  fps: number;
+  temperature: number;
 }) {
-  const applyOptimization = () => {
+  const [thinking, setThinking] = useState(false);
+
+  const applyOptimization = async () => {
+    const baseAction = "Adaptive optimization applied";
+
+    setThinking(true);
+
     setOptimization((prev) => ({
       ...prev,
       optimized: true,
       boost: false,
-      lastAction: "Adaptive optimization applied",
-      history: [
-        "Adaptive optimization applied",
-        ...prev.history,
-      ].slice(0, 10),
+      lastAction: "Analyzing session data...",
+    }));
+
+    const reasoning = await getAIReasoning({
+      fps,
+      temperature,
+      action: baseAction,
+    });
+
+    setThinking(false);
+
+    setOptimization((prev) => ({
+      ...prev,
+      lastAction: reasoning,
+      history: [reasoning, ...prev.history].slice(0, 10),
     }));
 
     notify("Optimization applied successfully");
   };
 
-  const boostNow = () => {
+  const boostNow = async () => {
+    const baseAction = "Performance boost activated";
+
+    setThinking(true);
+
     setOptimization((prev) => ({
       ...prev,
       boost: true,
       optimized: true,
-      lastAction: "Performance boost activated",
-      history: [
-        "Performance boost activated",
-        ...prev.history,
-      ].slice(0, 10),
+      lastAction: "Analyzing session data...",
+    }));
+
+    const reasoning = await getAIReasoning({
+      fps,
+      temperature,
+      action: baseAction,
+    });
+
+    setThinking(false);
+
+    setOptimization((prev) => ({
+      ...prev,
+      lastAction: reasoning,
+      history: [reasoning, ...prev.history].slice(0, 10),
     }));
 
     notify("Performance Boost activated");
   };
 
   const resetProfile = () => {
+    const baseAction = "Profile reset to default";
+
     setOptimization({
       optimized: false,
       boost: false,
-      lastAction: "Profile reset to default",
-      history: [
-        "Profile reset to default",
-        ...optimization.history,
-      ].slice(0, 10),
+      lastAction: baseAction,
+      history: [baseAction, ...optimization.history].slice(0, 10),
     });
 
     notify("Performance profile reset");
@@ -1695,7 +1808,11 @@ function ScreenOptimize({
               fontSize: 22,
             }}
           >
-            ⚡
+            {thinking ? (
+              <span className="anim-thinking">🤖</span>
+            ) : (
+              "⚡"
+            )}
           </div>
         </div>
 
@@ -1704,11 +1821,24 @@ function ScreenOptimize({
             marginTop: 12,
             fontFamily: F.body,
             fontSize: 9,
-            color: C.mute,
+            color: thinking ? C.cyan : C.mute,
           }}
         >
           {optimization.lastAction}
         </div>
+
+        {GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE" && (
+          <div
+            style={{
+              marginTop: 8,
+              fontFamily: F.mono,
+              fontSize: 7,
+              color: "#5a6270",
+            }}
+          >
+            ⚠ Add your Gemini API key to enable live AI reasoning
+          </div>
+        )}
       </Card>
 
       <Card style={{ padding: 15, marginBottom: 10 }}>
@@ -1734,6 +1864,7 @@ function ScreenOptimize({
           <ActionButton
             color={C.orange}
             onClick={boostNow}
+            disabled={thinking}
           >
             ⚡ BOOST NOW
           </ActionButton>
@@ -1741,6 +1872,7 @@ function ScreenOptimize({
           <ActionButton
             color={C.red}
             onClick={resetProfile}
+            disabled={thinking}
           >
             ↺ RESET PROFILE
           </ActionButton>
@@ -1814,8 +1946,9 @@ function ScreenOptimize({
           <ActionButton
             color={C.green}
             onClick={applyOptimization}
+            disabled={thinking}
           >
-            ✓ APPLY OPTIMIZATION
+            {thinking ? "🤖 THINKING..." : "✓ APPLY OPTIMIZATION"}
           </ActionButton>
         </div>
       </Card>
@@ -2792,6 +2925,8 @@ export default function App() {
             optimization={optimization}
             setOptimization={setOptimization}
             notify={notify}
+            fps={fps}
+            temperature={temperature}
           />
         );
 
