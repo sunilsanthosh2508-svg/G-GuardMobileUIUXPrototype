@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 
 /* =========================================================
-   VMAX - CHENNAI BATTLE
-   AI GAMING PERFORMANCE & THERMAL INTELLIGENCE
+   VMAX
+   AI-POWERED GAMING PERFORMANCE
 ========================================================= */
 
 type Screen = "setup" | "monitor";
