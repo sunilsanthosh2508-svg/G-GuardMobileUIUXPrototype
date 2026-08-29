@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 /* =========================================================
    VMAX — AI-POWERED GAMING PERFORMANCE
    Frontend-only prototype
-   8 Screens + Working Controls + Groq-powered reasoning
+   8 Screens + Working Controls + Offline local AI reasoning
 ========================================================= */
 
 type Screen =
@@ -60,258 +60,6 @@ const F = {
   body: "system-ui, -apple-system, sans-serif",
   mono: "ui-monospace, SFMono-Regular, monospace",
 };
-
-/* =========================================================
-   GROQ AI REASONING
-   ---------------------------------------------------------
-   Frontend-only prototype.
-
-   Reads its configuration from a Vite environment variable:
-     VITE_GROQ_API_KEY   - required, your Groq API key
-
-   SECURITY NOTE:
-   This is a Vite frontend, so VITE_GROQ_API_KEY is bundled into the
-   client JS and can be read by anyone who inspects the app. That is
-   fine for a hackathon/demo prototype, but it is NOT secure for a
-   production app. For production, move askGroq()'s fetch call behind
-   a server-side endpoint (e.g. a Netlify Function) that holds the
-   real key and proxies the request, and call that endpoint instead.
-========================================================= */
-
-const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-
-const GROQ_API_KEY: string | undefined = import.meta.env
-  .VITE_GROQ_API_KEY as string | undefined;
-
-const GROQ_MODEL = "llama-3.3-70b-versatile";
-
-function isGroqKeyConfigured(): boolean {
-  return typeof GROQ_API_KEY === "string" && GROQ_API_KEY.trim().length > 0;
-}
-
-const VMAX_SYSTEM_PROMPT =
-  "You are VMAX Gaming Performance AI, an assistant built into a mobile gaming-performance dashboard. " +
-  "Analyze the gaming telemetry provided by the application, using the actual FPS, CPU, GPU, RAM and " +
-  "temperature values given to you. Do NOT invent hardware changes, and do NOT claim that a system setting " +
-  "was actually changed — this is a frontend-only prototype. Never use generic filler phrases such as " +
-  "'Recommendation generated.' Return exactly three short parts: 'Detection:' the specific current " +
-  "condition, 'Recommendation:' one specific recommendation, and 'Reason:' a short explanation based on " +
-  "the actual metrics. Recommendations must be specific and relevant to the metrics given — for example: " +
-  "Reduce background workload, Prioritize FPS stability, Reduce thermal load, Maintain balanced performance, " +
-  "Prioritize GPU performance, or Reduce unnecessary memory usage. Keep the whole reply concise, under 80 " +
-  "words, plain text, no markdown headers or bullet lists.";
-
-type VmaxAiState = {
-  fps: number;
-  temperature: number;
-  cpuUsage?: number;
-  gpuUsage?: number;
-  ramUsage?: number;
-  performanceMode?: string;
-  thermalStatus?: string;
-  fpsStatus?: string;
-  recommendationStatus?: string;
-  activeAlerts?: string[];
-  sessionInfo?: string;
-  action: string;
-};
-
-function deriveThermalStatus(temperature: number): string {
-  if (temperature >= 46) return "Warning";
-  if (temperature >= 43) return "Elevated";
-  return "Optimal";
-}
-
-function deriveFpsStatus(fps: number): string {
-  if (fps >= 108) return "Stable";
-  if (fps >= 96) return "Fluctuating";
-  return "Unstable";
-}
-
-function buildVmaxStatePrompt(state: VmaxAiState): string {
-  const lines = [
-    "Current VMAX Gaming State:",
-    "",
-    `FPS: ${state.fps}`,
-    `FPS Status: ${state.fpsStatus ?? deriveFpsStatus(state.fps)}`,
-    `Temperature: ${state.temperature}°C`,
-    `Thermal Status: ${state.thermalStatus ?? deriveThermalStatus(state.temperature)}`,
-  ];
-
-  if (state.cpuUsage !== undefined) {
-    lines.push(`CPU Usage: ${state.cpuUsage}%`);
-  }
-
-  if (state.gpuUsage !== undefined) {
-    lines.push(`GPU Usage: ${state.gpuUsage}%`);
-  }
-
-  if (state.ramUsage !== undefined) {
-    lines.push(`RAM Usage: ${state.ramUsage}%`);
-  }
-
-  lines.push(
-    `Performance Mode: ${state.performanceMode ?? "Balanced"}`,
-    `Recommendation Status: ${state.recommendationStatus ?? "Not yet analyzed"}`,
-    `Active Alerts: ${
-      state.activeAlerts && state.activeAlerts.length
-        ? state.activeAlerts.join(", ")
-        : "None"
-    }`
-  );
-
-  if (state.sessionInfo) {
-    lines.push(`Session: ${state.sessionInfo}`);
-  }
-
-  lines.push("", `Requested Action: ${state.action}`, "", "Analyze this state and give the best recommendation.");
-
-  return lines.join("\n");
-}
-
-/* ---------------------------------------------------------
-   Low-level Groq call.
-   Sends a system + user message to the Groq OpenAI-compatible
-   chat/completions endpoint and returns the assistant's reply text.
---------------------------------------------------------- */
-async function askGroq(prompt: string): Promise<string> {
-  if (!isGroqKeyConfigured()) {
-    throw new Error("MISSING_KEY");
-  }
-
-  let response: Response;
-
-  try {
-    response = await fetch(GROQ_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${GROQ_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: [
-          {
-            role: "system",
-            content: VMAX_SYSTEM_PROMPT,
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        temperature: 0.3,
-      }),
-    });
-  } catch (networkError) {
-    console.error("Groq network error:", networkError);
-    throw new Error("NETWORK_ERROR");
-  }
-
-  if (!response.ok) {
-    const errorBody = await response.text().catch(() => "");
-    console.error(
-      `Groq API error ${response.status}:`,
-      errorBody
-    );
-
-    if (response.status === 401) throw new Error("UNAUTHORIZED");
-    if (response.status === 403) throw new Error("FORBIDDEN");
-    if (response.status === 429) throw new Error("RATE_LIMITED");
-
-    throw new Error(`API_ERROR_${response.status}`);
-  }
-
-  const data = await response.json();
-
-  const aiResponse: string | undefined =
-    data?.choices?.[0]?.message?.content?.trim();
-
-  if (!aiResponse) {
-    throw new Error("EMPTY_RESPONSE");
-  }
-
-  return aiResponse;
-}
-
-/* ---------------------------------------------------------
-   Local fallback recommendation.
-   Used when Groq is unavailable (no key, network error, rate
-   limit, etc.) so the Optimize feature still works offline.
---------------------------------------------------------- */
-function getLocalFallbackRecommendation(state: VmaxAiState): string {
-  const thermalStatus =
-    state.thermalStatus ?? deriveThermalStatus(state.temperature);
-  const fpsStatus = state.fpsStatus ?? deriveFpsStatus(state.fps);
-
-  if (thermalStatus === "Warning") {
-    return `Detection: Temperature is elevated at ${state.temperature}°C. Recommendation: Thermal risk response recommended. Reason: Cooling headroom is reduced, which risks throttling. (Local fallback — Groq unavailable)`;
-  }
-
-  if (fpsStatus === "Unstable") {
-    return `Detection: FPS is unstable at ${state.fps}. Recommendation: FPS stability response recommended. Reason: Frame rate is below the stable target range. (Local fallback — Groq unavailable)`;
-  }
-
-  if (state.cpuUsage !== undefined && state.cpuUsage >= 85) {
-    return `Detection: CPU usage is elevated at ${state.cpuUsage}%. Recommendation: CPU workload reduction recommended. Reason: High CPU load can reduce headroom for stable frame pacing. (Local fallback — Groq unavailable)`;
-  }
-
-  return `Detection: FPS (${state.fps}) and temperature (${state.temperature}°C) are within normal range. Recommendation: System performance is stable — no major performance change is recommended. Reason: Current metrics do not indicate thermal or performance risk. (Local fallback — Groq unavailable)`;
-}
-
-/* ---------------------------------------------------------
-   Friendly, non-technical error copy for the UI. Full
-   technical detail stays in the console via askGroq's logs.
---------------------------------------------------------- */
-function describeGroqError(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-
-  switch (message) {
-    case "MISSING_KEY":
-      return "Groq API key is not configured.";
-    case "UNAUTHORIZED":
-      return "Groq authentication failed. Check your Groq API key.";
-    case "FORBIDDEN":
-      return "Groq access was denied. Check API permissions.";
-    case "RATE_LIMITED":
-      return "Groq rate limit reached. Try again shortly.";
-    case "NETWORK_ERROR":
-      return "Unable to connect to Groq. Check your internet connection.";
-    default:
-      return "Groq is temporarily unavailable. Using a local recommendation instead.";
-  }
-}
-
-/* ---------------------------------------------------------
-   High-level helper used by the UI. Builds the dynamic VMAX
-   state prompt, calls Groq, and falls back to a local
-   recommendation (labeled as such) if Groq cannot be reached.
---------------------------------------------------------- */
-type AiReasoningResult = {
-  text: string;
-  source: "groq" | "fallback";
-  errorMessage?: string;
-};
-
-async function getAIReasoning(
-  state: VmaxAiState
-): Promise<AiReasoningResult> {
-  const prompt = buildVmaxStatePrompt(state);
-
-  try {
-    const text = await askGroq(prompt);
-    return { text, source: "groq" };
-  } catch (error) {
-    const errorMessage = describeGroqError(error);
-    console.error("VMAX Groq reasoning failed:", errorMessage, error);
-
-    return {
-      text: getLocalFallbackRecommendation(state),
-      source: "fallback",
-      errorMessage,
-    };
-  }
-}
 
 /* =========================================================
    BASE APP CSS
@@ -735,68 +483,6 @@ function ActionButton({
     >
       {children}
     </button>
-  );
-}
-
-function ThinkingBanner() {
-  const [dots, setDots] = useState(".");
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setDots((prev) =>
-        prev.length >= 3 ? "." : prev + "."
-      );
-    }, 350);
-
-    return () => window.clearInterval(timer);
-  }, []);
-
-  return (
-    <div
-      className="anim-slide"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "12px 14px",
-        borderRadius: 13,
-        background: `${C.cyan}12`,
-        border: `1px solid ${C.cyan}44`,
-        marginBottom: 10,
-      }}
-    >
-      <span
-        className="anim-thinking"
-        style={{ fontSize: 18 }}
-      >
-        🤖
-      </span>
-
-      <div>
-        <div
-          style={{
-            fontFamily: F.display,
-            fontSize: 10,
-            fontWeight: 700,
-            color: C.cyan,
-            letterSpacing: ".08em",
-          }}
-        >
-          AI IS THINKING{dots}
-        </div>
-
-        <div
-          style={{
-            marginTop: 2,
-            fontFamily: F.mono,
-            fontSize: 7,
-            color: C.mute,
-          }}
-        >
-          Analyzing live FPS &amp; thermal data
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -2062,7 +1748,7 @@ function ScreenAlert({
 
 /* =========================================================
    OPTIMIZE
-   Groq-powered live reasoning
+   Local, offline risk prediction and recommendations
 ========================================================= */
 
 /* =========================================================
@@ -2120,21 +1806,6 @@ function ScreenOptimize({
 }) {
   const [thinking, setThinking] = useState(false);
 
-  const activeAlertLabels = (): string[] => {
-    const active: string[] = [];
-    if (alerts.thermal) active.push("Thermal Alerts");
-    if (alerts.fps) active.push("FPS Alerts");
-    if (alerts.recommendationAlerts) active.push("Recommendation Alerts");
-    return active;
-  };
-
-  const currentPerformanceMode = (): string => {
-    if (optimization.riskDetected) return "Risk Detected";
-    if (optimization.analyzed) return "Analyzed";
-    if (settings.recommendationMode) return "Balanced (Auto)";
-    return "Balanced";
-  };
-
   const pushHistory = (
     prev: OptimizationState,
     entry: string
@@ -2144,47 +1815,26 @@ function ScreenOptimize({
     return [entry, ...prev.history].slice(0, 10);
   };
 
-  const runGroqAnalysis = async (action: string) => {
-    const result = await getAIReasoning({
-      fps,
-      temperature,
-      action,
-      performanceMode: currentPerformanceMode(),
-      recommendationStatus: optimization.analyzed
-        ? "Previously analyzed"
-        : "Not yet analyzed",
-      activeAlerts: activeAlertLabels(),
-    });
-
-    if (result.source === "fallback" && result.errorMessage) {
-      notify(result.errorMessage);
-    }
-
-    return result.text;
-  };
-
   const applyOptimization = async () => {
     if (thinking) return; // prevent overlapping requests
 
     setThinking(true);
 
-    try {
-      const reasoning = await runGroqAnalysis(
-        "General recommendation requested"
-      );
+    // Simulate processing delay
+    await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      setOptimization((prev) => ({
-        ...prev,
-        analyzed: true,
-        riskDetected: false,
-        lastAction: reasoning,
-        history: pushHistory(prev, reasoning),
-      }));
+    const result = predictRisk(fps, temperature, 68, 72, 84);
 
-      notify("Recommendation generated");
-    } finally {
-      setThinking(false);
-    }
+    setOptimization((prev) => ({
+      ...prev,
+      analyzed: true,
+      riskDetected: result.level === "high",
+      lastAction: result.recommendation,
+      history: pushHistory(prev, result.recommendation),
+    }));
+
+    notify("Recommendation generated");
+    setThinking(false);
   };
 
   const analyzeRisk = async () => {
@@ -2280,8 +1930,6 @@ function ScreenOptimize({
         }
       />
 
-      {thinking && <ThinkingBanner />}
-
       <Card
         style={{
           padding: 17,
@@ -2371,14 +2019,10 @@ function ScreenOptimize({
             marginTop: 8,
             fontFamily: F.mono,
             fontSize: 7,
-            color: isGroqKeyConfigured()
-              ? C.cyan
-              : C.green,
+            color: C.green,
           }}
         >
-          {isGroqKeyConfigured()
-            ? "✓ Cloud AI Mode (Optional)"
-            : "✓ Local Demo Mode (Works Offline)"}
+          ✓ Local Model — Works 100% Offline
         </div>
       </Card>
 
@@ -2932,7 +2576,6 @@ function ScreenAI({
   >;
   notify: (message: string) => void;
 }) {
-  const [localMode, setLocalMode] = useState(true);
 
   const settings = [
     {
@@ -3097,103 +2740,6 @@ function ScreenAI({
             marginBottom: 10,
           }}
         >
-          AI MODE
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "12px 0",
-            borderBottom: "1px solid rgba(255,255,255,0.05)",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                fontFamily: F.body,
-                fontSize: 11,
-                color: C.white,
-                fontWeight: 600,
-              }}
-            >
-              Local Model (Offline)
-            </div>
-            <div
-              style={{
-                marginTop: 3,
-                fontFamily: F.mono,
-                fontSize: 7,
-                color: C.mute,
-              }}
-            >
-              Rule-based risk prediction
-            </div>
-          </div>
-
-          <Toggle
-            on={localMode}
-            color={C.green}
-            onClick={() => {
-              setLocalMode(true);
-              notify("Switched to Local Model (Offline)");
-            }}
-          />
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "12px 0",
-            borderBottom: "1px solid rgba(255,255,255,0.05)",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                fontFamily: F.body,
-                fontSize: 11,
-                color: C.white,
-                fontWeight: 600,
-              }}
-            >
-              Cloud AI (Optional)
-            </div>
-            <div
-              style={{
-                marginTop: 3,
-                fontFamily: F.mono,
-                fontSize: 7,
-                color: C.mute,
-              }}
-            >
-              Groq for natural language
-            </div>
-          </div>
-
-          <Toggle
-            on={!localMode}
-            color={C.cyan}
-            onClick={() => {
-              setLocalMode(false);
-              notify("Switched to Cloud AI");
-            }}
-          />
-        </div>
-      </Card>
-
-      <Card style={{ padding: 15, marginBottom: 10 }}>
-        <div
-          style={{
-            fontFamily: F.mono,
-            fontSize: 8,
-            color: C.mute,
-            marginBottom: 10,
-          }}
-        >
           AI FEATURES
         </div>
 
@@ -3336,24 +2882,24 @@ function ScreenAI({
           }}
         >
           <div style={{ marginBottom: 8 }}>
-            <strong>1. Telemetry:</strong> Android Game
-            Overlay API reads FPS, temperature, battery
+            <strong>1. Monitor:</strong> Tracks FPS,
+            temperature, battery, CPU/GPU usage
           </div>
           <div style={{ marginBottom: 8 }}>
-            <strong>2. Prediction:</strong> TinyML model
-            predicts thermal/FPS risk (on-device)
+            <strong>2. Analyze:</strong> Local AI model
+            predicts thermal/FPS risks
           </div>
           <div style={{ marginBottom: 8 }}>
-            <strong>3. NPU:</strong> Snapdragon Hexagon NPU
-            accelerates inference
-          </div>
-          <div style={{ marginBottom: 8 }}>
-            <strong>4. Recommendation:</strong> Actionable
+            <strong>3. Recommend:</strong> Actionable
             advice (e.g., "Reduce graphics quality")
           </div>
-          <div>
-            <strong>5. Offline:</strong> No cloud
+          <div style={{ marginBottom: 8 }}>
+            <strong>4. Offline:</strong> No cloud
             dependency, privacy-first
+          </div>
+          <div>
+            <strong>5. Future:</strong> Android app with
+            Snapdragon NPU acceleration
           </div>
         </div>
       </Card>
