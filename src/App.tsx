@@ -3401,7 +3401,7 @@ export default function App() {
           color: C.white,
           background:
             "radial-gradient(circle at top, #111827 0%, #07090d 45%, #050609 100%)",
-        }}
+        }}a
       >
         {renderScreen()}
       </main>
