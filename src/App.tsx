@@ -35,8 +35,8 @@ type NpuSettings = {
 };
 
 type OptimizationState = {
-  optimized: boolean;
-  boost: boolean;
+  analyzed: boolean;
+  riskDetected: boolean;
   lastAction: string;
   history: string[];
 };
@@ -56,9 +56,9 @@ const C = {
 };
 
 const F = {
-  display: "'Orbitron', sans-serif",
-  body: "'Exo 2', sans-serif",
-  mono: "'JetBrains Mono', monospace",
+  display: "system-ui, -apple-system, sans-serif",
+  body: "system-ui, -apple-system, sans-serif",
+  mono: "ui-monospace, SFMono-Regular, monospace",
 };
 
 /* =========================================================
@@ -322,10 +322,6 @@ function GlobalStyles() {
     const style = document.createElement("style");
 
     style.innerHTML = `
-      @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
-      @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700;800&display=swap');
-      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
-
       * {
         box-sizing: border-box;
       }
@@ -339,7 +335,7 @@ function GlobalStyles() {
       }
 
       body {
-        font-family: 'Exo 2', sans-serif;
+        font-family: system-ui, -apple-system, sans-serif;
         overflow-x: hidden;
       }
 
@@ -877,11 +873,6 @@ function ScreenDash({
       color: C.cyan,
     },
     {
-      label: "AI CONFIDENCE",
-      value: "94%",
-      color: C.purple,
-    },
-    {
       label: "PROTECTIONS",
       value: `${active}/3`,
       color: C.yellow,
@@ -923,8 +914,8 @@ function ScreenDash({
               margin: 0,
               fontFamily: F.display,
               fontSize: 30,
-              fontWeight: 900,
-              letterSpacing: ".1em",
+              fontWeight: 800,
+              letterSpacing: ".06em",
               color: C.white,
               textShadow: `0 0 20px ${C.cyan}30`,
             }}
@@ -1029,10 +1020,19 @@ function ScreenDash({
           LIVE PERFORMANCE
         </div>
 
+        <div style={{ 
+          fontFamily: F.mono, 
+          fontSize: 7, 
+          color: C.mute, 
+          marginBottom: 8 
+        }}>
+          DEMO TELEMETRY
+        </div>
+
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns: "1fr 1fr 1fr",
             gap: 9,
           }}
         >
@@ -1040,7 +1040,7 @@ function ScreenDash({
             <div
               key={item.label}
               style={{
-                padding: "12px 13px",
+                padding: "12px 10px",
                 borderRadius: 12,
                 background: "rgba(255,255,255,.03)",
               }}
@@ -1048,7 +1048,7 @@ function ScreenDash({
               <div
                 style={{
                   fontFamily: F.display,
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: 800,
                   color: item.color,
                 }}
@@ -1068,6 +1068,29 @@ function ScreenDash({
               </div>
             </div>
           ))}
+        </div>
+      </Card>
+
+      <Card style={{ padding: 15, marginBottom: 10 }}>
+        <div style={{ 
+          fontFamily: F.mono, 
+          fontSize: 8, 
+          color: C.mute, 
+          marginBottom: 8 
+        }}>
+          PROTOTYPE NOTICE
+        </div>
+        
+        <div style={{ 
+          fontFamily: F.body, 
+          fontSize: 9, 
+          color: C.mute, 
+          lineHeight: 1.6 
+        }}>
+          This is a frontend demo simulating the VMAX experience. In the final Android 
+          app, telemetry comes from device sensors (Game Overlay API) and the AI model 
+          runs on-device (Snapdragon NPU). This browser demo does not control hardware 
+          settings.
         </div>
       </Card>
 
@@ -1167,14 +1190,14 @@ function ScreenSetup({
     },
     {
       key: "autoOptimization" as const,
-      label: "Auto-Optimization",
+      label: "Recommendation Mode",
       onText: "Trigger at 91% confidence",
       offText: "Automatic optimization disabled",
       color: C.green,
     },
     {
       key: "fpsGuard" as const,
-      label: "FPS Guard",
+      label: "FPS Risk Alerts",
       onText: "Min 90 FPS threshold",
       offText: "FPS protection disabled",
       color: C.yellow,
@@ -1465,6 +1488,10 @@ function ScreenMonitor({
           borderColor: `${C.green}35`,
         }}
       >
+        <div style={{ fontSize: 7, color: C.mute, marginBottom: 3 }}>
+          DEMO TELEMETRY
+        </div>
+
         <div
           style={{
             display: "flex",
@@ -1488,7 +1515,7 @@ function ScreenMonitor({
                 marginTop: 4,
                 fontFamily: F.display,
                 fontSize: 48,
-                fontWeight: 900,
+                fontWeight: 800,
                 color: C.green,
                 textShadow: `0 0 18px ${C.green}44`,
               }}
@@ -1532,6 +1559,10 @@ function ScreenMonitor({
       </Card>
 
       <Card style={{ padding: 15, marginBottom: 10 }}>
+        <div style={{ fontSize: 7, color: C.mute, marginBottom: 8 }}>
+          DEMO TELEMETRY
+        </div>
+
         <div
           style={{
             display: "grid",
@@ -1585,6 +1616,10 @@ function ScreenMonitor({
       </Card>
 
       <Card style={{ padding: 15, marginBottom: 10 }}>
+        <div style={{ fontSize: 7, color: C.mute, marginBottom: 8 }}>
+          DEMO TELEMETRY
+        </div>
+
         <div
           style={{
             display: "flex",
@@ -1629,6 +1664,97 @@ function ScreenMonitor({
       </Card>
 
       <Card style={{ padding: 15, marginBottom: 10 }}>
+        <div style={{ 
+          fontFamily: F.mono, 
+          fontSize: 8, 
+          color: C.mute, 
+          marginBottom: 10 
+        }}>
+          RISK PREDICTION (NEXT 15 MIN)
+        </div>
+        
+        <div style={{ 
+          display: "flex", 
+          justifyContent: "space-between",
+          alignItems: "flex-end",
+          height: 60,
+          position: "relative"
+        }}>
+          {/* Low risk segment (0-5 min) */}
+          <div style={{ 
+            width: "33%", 
+            height: "30%", 
+            background: C.green,
+            borderRadius: 4,
+            position: "relative"
+          }}>
+            <div style={{ 
+              position: "absolute", 
+              bottom: -20, 
+              left: "50%", 
+              transform: "translateX(-50%)",
+              fontSize: 7,
+              color: C.mute
+            }}>0-5 min</div>
+          </div>
+          
+          {/* Medium risk segment (5-10 min) */}
+          <div style={{ 
+            width: "33%", 
+            height: "60%", 
+            background: C.yellow,
+            borderRadius: 4,
+            position: "relative"
+          }}>
+            <div style={{ 
+              position: "absolute", 
+              bottom: -20, 
+              left: "50%", 
+              transform: "translateX(-50%)",
+              fontSize: 7,
+              color: C.mute
+            }}>5-10 min</div>
+          </div>
+          
+          {/* High risk segment (10-15 min) */}
+          <div style={{ 
+            width: "33%", 
+            height: "100%", 
+            background: C.red,
+            borderRadius: 4,
+            position: "relative"
+          }}>
+            <div style={{ 
+              position: "absolute", 
+              bottom: -20, 
+              left: "50%", 
+              transform: "translateX(-50%)",
+              fontSize: 7,
+              color: C.mute
+            }}>10-15 min</div>
+            
+            {/* Warning icon */}
+            <div style={{ 
+              position: "absolute", 
+              top: -25, 
+              left: "50%", 
+              transform: "translateX(-50%)",
+              fontSize: 16
+            }}>⚠️</div>
+          </div>
+        </div>
+        
+        <div style={{ 
+          marginTop: 30,
+          fontFamily: F.body, 
+          fontSize: 9, 
+          color: C.mute 
+        }}>
+          Predicted: High thermal risk in 10-15 minutes
+        </div>
+      </Card>
+
+      <Card style={{ padding: 15, marginBottom: 10 }}>
         <div
           style={{
             fontFamily: F.mono,
@@ -1646,10 +1772,10 @@ function ScreenMonitor({
             settings.thermalPrediction,
           ],
           [
-            "Auto-Optimization",
+            "Recommendation Mode",
             settings.autoOptimization,
           ],
-          ["FPS Guard", settings.fpsGuard],
+          ["FPS Risk Alerts", settings.fpsGuard],
         ] as [string, boolean][]).map(([label, enabled]) => (
           <div
             key={String(label)}
@@ -1933,6 +2059,38 @@ function ScreenAlert({
    Groq-powered live reasoning
 ========================================================= */
 
+/* =========================================================
+   RISK PREDICTION HELPER
+========================================================= */
+
+function predictRisk(
+  fps: number,
+  temperature: number,
+  battery: number,
+  cpuUsage?: number,
+  gpuUsage?: number
+): { level: string; reason: string; recommendation: string } {
+  if (temperature >= 46 || fps < 90) {
+    return {
+      level: "high",
+      reason: `Temperature ${temperature}°C is elevated. FPS ${fps} is below target.`,
+      recommendation: "Reduce graphics quality or take a cooling break.",
+    };
+  }
+  if (temperature >= 43 || fps < 100) {
+    return {
+      level: "medium",
+      reason: `Temperature ${temperature}°C is rising. FPS ${fps} is fluctuating.`,
+      recommendation: "Monitor closely. Consider lowering shadows.",
+    };
+  }
+  return {
+    level: "low",
+    reason: `Temperature ${temperature}°C and FPS ${fps} are stable.`,
+    recommendation: "Continue gaming. No action needed.",
+  };
+}
+
 function ScreenOptimize({
   go,
   optimization,
@@ -1965,8 +2123,8 @@ function ScreenOptimize({
   };
 
   const currentPerformanceMode = (): string => {
-    if (optimization.boost) return "Boost";
-    if (optimization.optimized) return "Optimized";
+    if (optimization.riskDetected) return "Risk Detected";
+    if (optimization.analyzed) return "Analyzed";
     if (settings.autoOptimization) return "Balanced (Auto)";
     return "Balanced";
   };
@@ -1986,9 +2144,9 @@ function ScreenOptimize({
       temperature,
       action,
       performanceMode: currentPerformanceMode(),
-      optimizationStatus: optimization.optimized
-        ? "Previously optimized"
-        : "Not yet optimized",
+      optimizationStatus: optimization.analyzed
+        ? "Previously analyzed"
+        : "Not yet analyzed",
       activeAlerts: activeAlertLabels(),
     });
 
@@ -2011,53 +2169,49 @@ function ScreenOptimize({
 
       setOptimization((prev) => ({
         ...prev,
-        optimized: true,
-        boost: false,
+        analyzed: true,
+        riskDetected: false,
         lastAction: reasoning,
         history: pushHistory(prev, reasoning),
       }));
 
-      notify("Optimization applied successfully");
+      notify("Recommendation generated");
     } finally {
       setThinking(false);
     }
   };
 
-  const boostNow = async () => {
+  const analyzeRisk = async () => {
     if (thinking) return; // prevent overlapping requests
-
-    const baseAction = "Performance boost activated";
 
     setThinking(true);
 
+    // Simulate analysis delay
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    const result = predictRisk(fps, temperature, 68, 72, 84);
+
     setOptimization((prev) => ({
       ...prev,
-      boost: true,
-      optimized: true,
-      lastAction: "Analyzing session data...",
+      analyzed: true,
+      riskDetected: result.level !== "low",
+      lastAction: result.recommendation,
+      history: pushHistory(
+        prev,
+        `${result.level.toUpperCase()} RISK: ${result.recommendation}`
+      ),
     }));
 
-    try {
-      const reasoning = await runGroqAnalysis(baseAction);
-
-      setOptimization((prev) => ({
-        ...prev,
-        lastAction: reasoning,
-        history: pushHistory(prev, reasoning),
-      }));
-
-      notify("Performance Boost activated");
-    } finally {
-      setThinking(false);
-    }
+    notify("Risk analysis completed");
+    setThinking(false);
   };
 
   const resetProfile = () => {
     const baseAction = "Profile reset to default";
 
     setOptimization((prev) => ({
-      optimized: false,
-      boost: false,
+      analyzed: false,
+      riskDetected: false,
       lastAction: baseAction,
       history: pushHistory(prev, baseAction),
     }));
@@ -2072,12 +2226,12 @@ function ScreenOptimize({
       `Generated: ${new Date().toLocaleString()}`,
       "",
       `Current state: ${
-        optimization.optimized
-          ? "OPTIMIZED"
+        optimization.analyzed
+          ? "ANALYZED"
           : "DEFAULT"
       }`,
-      `Boost: ${
-        optimization.boost ? "ON" : "OFF"
+      `Risk Detected: ${
+        optimization.riskDetected ? "ON" : "OFF"
       }`,
       `Last action: ${optimization.lastAction}`,
       "",
@@ -2109,12 +2263,12 @@ function ScreenOptimize({
         title="OPTIMIZE"
         go={go}
         tag={
-          optimization.optimized
-            ? "OPTIMIZED"
+          optimization.analyzed
+            ? "ANALYZED"
             : "READY"
         }
         tagColor={
-          optimization.optimized
+          optimization.analyzed
             ? C.green
             : C.yellow
         }
@@ -2153,14 +2307,14 @@ function ScreenOptimize({
                 fontFamily: F.display,
                 fontSize: 21,
                 fontWeight: 800,
-                color: optimization.boost
+                color: optimization.riskDetected
                   ? C.orange
                   : C.green,
               }}
             >
-              {optimization.boost
-                ? "BOOST ACTIVE"
-                : optimization.optimized
+              {optimization.riskDetected
+                ? "RISK DETECTED"
+                : optimization.analyzed
                 ? "ADAPTIVE"
                 : "BALANCED"}
             </div>
@@ -2168,7 +2322,7 @@ function ScreenOptimize({
 
           <div
             className={
-              optimization.boost
+              optimization.riskDetected
                 ? "anim-glow"
                 : ""
             }
@@ -2212,13 +2366,74 @@ function ScreenOptimize({
             fontFamily: F.mono,
             fontSize: 7,
             color: isGroqKeyConfigured()
-              ? C.green
-              : "#5a6270",
+              ? C.cyan
+              : C.green,
           }}
         >
           {isGroqKeyConfigured()
-            ? "✓ Groq AI Connected — Live optimization enabled"
-            : "⚠ Add your VITE_GROQ_API_KEY to enable live AI optimization"}
+            ? "✓ Cloud AI Mode (Optional)"
+            : "✓ Local Demo Mode (Works Offline)"}
+        </div>
+      </Card>
+
+      <Card style={{ padding: 15, marginBottom: 10 }}>
+        <div style={{ 
+          fontFamily: F.mono, 
+          fontSize: 8, 
+          color: C.mute, 
+          marginBottom: 10 
+        }}>
+          WHY THIS RECOMMENDATION?
+        </div>
+        
+        <div style={{ 
+          display: "grid", 
+          gridTemplateColumns: "1fr 1fr", 
+          gap: 8 
+        }}>
+          <div style={{ 
+            padding: 10, 
+            borderRadius: 8, 
+            background: "rgba(255,255,255,0.03)" 
+          }}>
+            <div style={{ fontSize: 7, color: C.mute, marginBottom: 3 }}>
+              TEMPERATURE
+            </div>
+            <div style={{ fontSize: 14, color: C.red }}>46°C ↑</div>
+          </div>
+          
+          <div style={{ 
+            padding: 10, 
+            borderRadius: 8, 
+            background: "rgba(255,255,255,0.03)" 
+          }}>
+            <div style={{ fontSize: 7, color: C.mute, marginBottom: 3 }}>
+              FPS
+            </div>
+            <div style={{ fontSize: 14, color: C.yellow }}>88 ↓</div>
+          </div>
+          
+          <div style={{ 
+            padding: 10, 
+            borderRadius: 8, 
+            background: "rgba(255,255,255,0.03)" 
+          }}>
+            <div style={{ fontSize: 7, color: C.mute, marginBottom: 3 }}>
+              SESSION
+            </div>
+            <div style={{ fontSize: 14, color: C.cyan }}>18 min</div>
+          </div>
+          
+          <div style={{ 
+            padding: 10, 
+            borderRadius: 8, 
+            background: "rgba(255,255,255,0.03)" 
+          }}>
+            <div style={{ fontSize: 7, color: C.mute, marginBottom: 3 }}>
+              RISK
+            </div>
+            <div style={{ fontSize: 14, color: C.red }}>HIGH</div>
+          </div>
         </div>
       </Card>
 
@@ -2244,10 +2459,10 @@ function ScreenOptimize({
         >
           <ActionButton
             color={C.orange}
-            onClick={boostNow}
+            onClick={analyzeRisk}
             disabled={thinking}
           >
-            ⚡ BOOST NOW
+            🔍 ANALYZE RISK
           </ActionButton>
 
           <ActionButton
@@ -2334,6 +2549,18 @@ function ScreenOptimize({
               : "✓ APPLY OPTIMIZATION"}
           </ActionButton>
         </div>
+
+        <div style={{ marginTop: 10 }}>
+          <ActionButton
+            color={C.green}
+            onClick={() => {
+              notify("Recommendation marked as followed");
+              // Optionally log this for analytics
+            }}
+          >
+            ✓ MARK AS FOLLOWED
+          </ActionButton>
+        </div>
       </Card>
 
       <Card style={{ padding: 15 }}>
@@ -2406,11 +2633,16 @@ function ScreenAnalytics({
   go: (screen: Screen) => void;
   notify: (message: string) => void;
 }) {
+  const [avgFps, setAvgFps] = useState(116);
+  const [avgTemp, setAvgTemp] = useState(43);
+  const [stableFpsPercent, setStableFpsPercent] = useState(94);
+  const [thermalEvents, setThermalEvents] = useState(8);
+
   const stats = [
-    ["AVG FPS", "116", "+4.8%", C.green],
-    ["AVG TEMP", "43°C", "-6.2%", C.cyan],
-    ["STABLE FPS", "94%", "+8.1%", C.purple],
-    ["THERMAL EVENTS", "8", "-15%", C.yellow],
+    ["AVG FPS", `${avgFps || "—"}`, "—", C.green],
+    ["AVG TEMP", `${avgTemp || "—"}°C`, "—", C.cyan],
+    ["STABLE FPS", `${stableFpsPercent || "—"}%`, "—", C.purple],
+    ["THERMAL EVENTS", `${thermalEvents || "—"}`, "—", C.yellow],
   ];
 
   const exportReport = () => {
@@ -2424,14 +2656,14 @@ function ScreenAnalytics({
         ],
         [],
         ["Metric", "Value", "Change"],
-        ["Average FPS", "116", "+4.8%"],
+        ["Average FPS", `${avgFps || "—"}`, "—"],
         [
           "Average Temperature",
-          "43°C",
-          "-6.2%",
+          `${avgTemp || "—"}°C`,
+          "—",
         ],
-        ["Stable FPS", "94%", "+8.1%"],
-        ["Thermal Events", "8", "-15%"],
+        ["Stable FPS", `${stableFpsPercent || "—"}%`, "—"],
+        ["Thermal Events", `${thermalEvents || "—"}`, "—"],
         ["NPU Accuracy", "94%", "Stable"],
         [
           "Optimization Events",
@@ -2456,7 +2688,7 @@ function ScreenAnalytics({
       <Header
         title="ANALYTICS"
         go={go}
-        tag="7 DAYS"
+        tag="SAMPLE"
         tagColor={C.purple}
       />
 
@@ -2670,6 +2902,8 @@ function ScreenAI({
   >;
   notify: (message: string) => void;
 }) {
+  const [localMode, setLocalMode] = useState(true);
+
   const settings = [
     {
       key: "inference" as const,
@@ -2708,7 +2942,7 @@ function ScreenAI({
         go={go}
         tag={
           npuSettings.inference
-            ? "NPU ACTIVE"
+            ? "NPU PIPELINE"
             : "NPU OFF"
         }
         tagColor={
@@ -2833,13 +3067,110 @@ function ScreenAI({
             marginBottom: 10,
           }}
         >
+          AI MODE
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "12px 0",
+            borderBottom: "1px solid rgba(255,255,255,0.05)",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 11,
+                color: C.white,
+                fontWeight: 600,
+              }}
+            >
+              Local Model (Offline)
+            </div>
+            <div
+              style={{
+                marginTop: 3,
+                fontFamily: F.mono,
+                fontSize: 7,
+                color: C.mute,
+              }}
+            >
+              Rule-based risk prediction
+            </div>
+          </div>
+
+          <Toggle
+            on={localMode}
+            color={C.green}
+            onClick={() => {
+              setLocalMode(true);
+              notify("Switched to Local Model (Offline)");
+            }}
+          />
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "12px 0",
+            borderBottom: "1px solid rgba(255,255,255,0.05)",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 11,
+                color: C.white,
+                fontWeight: 600,
+              }}
+            >
+              Cloud AI (Optional)
+            </div>
+            <div
+              style={{
+                marginTop: 3,
+                fontFamily: F.mono,
+                fontSize: 7,
+                color: C.mute,
+              }}
+            >
+              Groq for natural language
+            </div>
+          </div>
+
+          <Toggle
+            on={!localMode}
+            color={C.cyan}
+            onClick={() => {
+              setLocalMode(false);
+              notify("Switched to Cloud AI");
+            }}
+          />
+        </div>
+      </Card>
+
+      <Card style={{ padding: 15, marginBottom: 10 }}>
+        <div
+          style={{
+            fontFamily: F.mono,
+            fontSize: 8,
+            color: C.mute,
+            marginBottom: 10,
+          }}
+        >
           AI FEATURES
         </div>
 
         {[
           ["Thermal Prediction", "94%", C.cyan],
           ["FPS Forecasting", "91%", C.green],
-          ["Auto-Optimization", "89%", C.yellow],
+          ["Recommendation Mode", "89%", C.yellow],
         ].map(
           ([name, accuracy, color]) => (
             <div
@@ -2952,6 +3283,49 @@ function ScreenAI({
             </div>
           );
         })}
+      </Card>
+
+      <Card style={{ padding: 15, marginBottom: 10 }}>
+        <div
+          style={{
+            fontFamily: F.mono,
+            fontSize: 8,
+            color: C.mute,
+            marginBottom: 10,
+          }}
+        >
+          HOW VMAX WORKS
+        </div>
+
+        <div
+          style={{
+            fontFamily: F.body,
+            fontSize: 9,
+            color: C.white,
+            lineHeight: 1.6,
+          }}
+        >
+          <div style={{ marginBottom: 8 }}>
+            <strong>1. Telemetry:</strong> Android Game
+            Overlay API reads FPS, temperature, battery
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <strong>2. Prediction:</strong> TinyML model
+            predicts thermal/FPS risk (on-device)
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <strong>3. NPU:</strong> Snapdragon Hexagon NPU
+            accelerates inference
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <strong>4. Recommendation:</strong> Actionable
+            advice (e.g., "Reduce graphics quality")
+          </div>
+          <div>
+            <strong>5. Offline:</strong> No cloud
+            dependency, privacy-first
+          </div>
+        </div>
       </Card>
     </div>
   );
@@ -3253,10 +3627,10 @@ export default function App() {
 
   const [optimization, setOptimization] =
     useState<OptimizationState>({
-      optimized: false,
-      boost: false,
+      analyzed: false,
+      riskDetected: false,
       lastAction:
-        "No optimization applied yet",
+        "No recommendation generated yet",
       history: [],
     });
 
@@ -3295,10 +3669,10 @@ export default function App() {
     setTemperature(41);
 
     setOptimization({
-      optimized: false,
-      boost: false,
+      analyzed: false,
+      riskDetected: false,
       lastAction:
-        "No optimization applied yet",
+        "No recommendation generated yet",
       history: [],
     });
   };
